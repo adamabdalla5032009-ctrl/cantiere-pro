@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cantierometro - Gestione Giornate, Cantieri e Scadenze</title>
     <meta name="description" content="Presenze, paghe, spese e previsione di guadagno o perdita dei cantieri.">
+    <!-- Anteprima del link su WhatsApp, Facebook, ecc. Quando avrai il dominio, aggiorna i due indirizzi. -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="it_IT">
+    <meta property="og:site_name" content="Cantierometro">
+    <meta property="og:title" content="Cantierometro - Scopri se un cantiere ti fa guadagnare o perdere">
+    <meta property="og:description" content="Presenze operai, paghe, spese e scadenze dal telefono. Per le piccole imprese edili. Gratis durante il lancio.">
+    <meta property="og:url" content="https://adamabdalla5032009-ctrl.github.io/cantiere-pro/">
+    <meta property="og:image" content="https://adamabdalla5032009-ctrl.github.io/cantiere-pro/icone/anteprima-condivisione.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="theme-color" content="#0f172a">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icone/icona-192.png">
@@ -51,11 +62,288 @@
             background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             z-index: 1000;
-            padding: 20px;
+            padding: 36px 16px 0;
             overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        /* ---------- Pagina di presentazione (sotto l'accesso) ---------- */
+        .hero-cta {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .hero-cta button {
+            border: none;
+            border-radius: 8px;
+            padding: 14px 22px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .cta-principale {
+            background: var(--primary);
+            color: white;
+        }
+
+        .cta-principale:hover {
+            background: var(--primary-dark);
+        }
+
+        .cta-secondaria {
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .hero-nota {
+            margin-top: 10px;
+            font-size: 0.82rem;
+            color: #94a3b8;
+        }
+
+        .landing {
+            width: 100%;
+            max-width: 980px;
+            margin-top: 48px;
+            color: #e2e8f0;
+        }
+
+        .lp-sezione {
+            margin-bottom: 44px;
+        }
+
+        .lp-sezione > h2 {
+            text-align: center;
+            font-size: 1.45rem;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .lp-sottotitolo {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin: 0 auto 22px;
+            max-width: 560px;
+            line-height: 1.5;
+        }
+
+        .lp-griglia {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+            gap: 14px;
+        }
+
+        .lp-scheda {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .lp-scheda h3 {
+            color: white;
+            font-size: 1.02rem;
+            margin: 8px 0 6px;
+        }
+
+        .lp-scheda p {
+            font-size: 0.92rem;
+            color: #cbd5e1;
+        }
+
+        .lp-icona {
+            font-size: 1.7rem;
+        }
+
+        .lp-numero {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-weight: 800;
+        }
+
+        .lp-storia {
+            background: rgba(234, 88, 12, 0.12);
+            border: 1px solid rgba(234, 88, 12, 0.45);
+            border-radius: 14px;
+            padding: 26px 22px;
+            text-align: center;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .lp-storia blockquote {
+            font-size: 1.15rem;
+            line-height: 1.55;
+            color: white;
+            font-weight: 600;
+        }
+
+        .lp-storia cite {
+            display: block;
+            margin-top: 12px;
+            color: #fdba74;
+            font-style: normal;
+            font-size: 0.9rem;
+        }
+
+        .lp-video {
+            position: relative;
+            max-width: 720px;
+            margin: 0 auto;
+            aspect-ratio: 16 / 9;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .lp-video iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .lp-video-play {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            background: #000;
+        }
+
+        .lp-video-play img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .lp-play-icona {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-left: 6px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s;
+        }
+
+        .lp-video-play:hover .lp-play-icona {
+            transform: translate(-50%, -50%) scale(1.08);
+        }
+
+        .lp-nota-video {
+            text-align: center;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-top: 10px;
+        }
+
+        .lp-nota-video a {
+            color: #cbd5e1;
+        }
+
+        .lp-prezzo {
+            max-width: 460px;
+            margin: 0 auto;
+            background: white;
+            color: var(--text);
+            border-radius: 14px;
+            padding: 28px 24px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+        }
+
+        .lp-prezzo .cifra {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .lp-prezzo ul {
+            list-style: none;
+            text-align: left;
+            margin: 16px 0 20px;
+            line-height: 1.9;
+            font-size: 0.95rem;
+        }
+
+        .lp-faq details {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            max-width: 760px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .lp-faq summary {
+            cursor: pointer;
+            font-weight: 700;
+            color: white;
+            font-size: 0.97rem;
+        }
+
+        .lp-faq details p {
+            margin-top: 10px;
+            color: #cbd5e1;
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+
+        .lp-finale {
+            text-align: center;
+            padding: 34px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .lp-finale h2 {
+            color: white;
+            font-size: 1.4rem;
+            margin-bottom: 6px;
+        }
+
+        .lp-footer {
+            text-align: center;
+            font-size: 0.82rem;
+            color: #94a3b8;
+            padding: 0 16px 30px;
+            line-height: 1.8;
+        }
+
+        .lp-footer a {
+            color: #cbd5e1;
         }
 
         .hero-intro {
@@ -1003,9 +1291,14 @@
             <span class="hero-pill">✓ Calcolo automatico paghe e extra</span>
             <span class="hero-pill">✓ Avvisi scadenza documenti</span>
         </div>
+        <div class="hero-cta">
+            <button type="button" class="cta-principale" onclick="vaiARegistrazione()">Prova gratis</button>
+            <button type="button" class="cta-secondaria" onclick="avviaModalitaDemo()">👀 Guarda la demo</button>
+        </div>
+        <p class="hero-nota">Gratis durante il lancio · Nessuna carta di credito · Funziona sul telefono</p>
     </div>
 
-    <div class="auth-card">
+    <div class="auth-card" id="box-accesso">
         <h2>🏗️ Cantiero<span>metro</span></h2>
         <p id="auth-sottotitolo">Accedi per ritrovare i tuoi dati su ogni dispositivo, oppure prova subito l'app.</p>
         <div id="auth-msg" class="auth-msg" style="display:none;"></div>
@@ -1046,6 +1339,153 @@
     </div>
     <div class="link-legali">
         <a href="#" onclick="apriAiuto(); return false;">Serve aiuto? Scrivici</a> · <a href="privacy.html">Informativa privacy</a> · <a href="termini.html">Termini di servizio</a>
+    </div>
+
+    <!-- PRESENTAZIONE -->
+    <div class="landing">
+
+        <section class="lp-sezione" id="lp-video" style="display:none;">
+            <h2>Guarda come funziona</h2>
+            <p class="lp-sottotitolo">In meno di due minuti, tutto quello che fa Cantierometro.</p>
+            <div class="lp-video" id="lp-video-box">
+                <button type="button" class="lp-video-play" onclick="avviaVideo()" aria-label="Guarda il video di presentazione">
+                    <img src="icone/copertina-video.jpg" alt="Copertina del video: come funziona Cantierometro" loading="lazy">
+                    <span class="lp-play-icona">▶</span>
+                </button>
+            </div>
+            <p class="lp-nota-video">Il video si apre da YouTube: premendo Play accetti che YouTube (Google) tratti i dati della visualizzazione. <a href="privacy.html">Privacy</a></p>
+        </section>
+
+        <section class="lp-sezione">
+            <h2>Come funziona</h2>
+            <p class="lp-sottotitolo">Tre passi, dal telefono. Niente da installare, niente fogli da ricopiare la sera.</p>
+            <div class="lp-griglia">
+                <div class="lp-scheda">
+                    <span class="lp-numero">1</span>
+                    <h3>Inserisci operai e cantieri</h3>
+                    <p>La paga giornaliera di ogni operaio e, per ogni cantiere, il preventivo, quanti giorni e quanti operai servono e i materiali previsti.</p>
+                </div>
+                <div class="lp-scheda">
+                    <span class="lp-numero">2</span>
+                    <h3>Segna la squadra ogni giorno</h3>
+                    <p>Chi era in cantiere, dove e quante ore extra: pochi tocchi. Può farlo anche il capocantiere dal suo telefono.</p>
+                </div>
+                <div class="lp-scheda">
+                    <span class="lp-numero">3</span>
+                    <h3>Vedi subito come va</h3>
+                    <p>Per ogni cantiere: guadagnerà o perderà, e di quanto. A fine mese le paghe sono già calcolate e pronte per il consulente.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="lp-sezione">
+            <h2>Cosa fa per la tua impresa</h2>
+            <p class="lp-sottotitolo">Pensato per le piccole imprese edili, non per gli uffici tecnici.</p>
+            <div class="lp-griglia">
+                <div class="lp-scheda">
+                    <span class="lp-icona">📈</span>
+                    <h3>Previsione guadagno o perdita</h3>
+                    <p>Ti accorgi in tempo se un cantiere sta andando in perdita, non a lavori finiti. Alla chiusura vedi quanto hai guadagnato davvero.</p>
+                </div>
+                <div class="lp-scheda">
+                    <span class="lp-icona">💶</span>
+                    <h3>Paghe pronte a fine mese</h3>
+                    <p>Giornate, ore extra con maggiorazione e totale da dare per ogni operaio. Un tocco e scarichi il file Excel per il consulente del lavoro.</p>
+                </div>
+                <div class="lp-scheda">
+                    <span class="lp-icona">🧾</span>
+                    <h3>Spese dei materiali</h3>
+                    <p>Ogni fattura con data e descrizione, cantiere per cantiere, confrontata con quanto avevi previsto.</p>
+                </div>
+                <div class="lp-scheda">
+                    <span class="lp-icona">🚨</span>
+                    <h3>Scadenze dei documenti</h3>
+                    <p>Visite di idoneità, corsi sicurezza, patentini: l'app ti avvisa 30 giorni prima che scadano.</p>
+                </div>
+                <div class="lp-scheda">
+                    <span class="lp-icona">👷</span>
+                    <h3>Accesso per il capocantiere</h3>
+                    <p>Segna le presenze dal suo telefono, ma non vede paghe, preventivi e guadagni.</p>
+                </div>
+                <div class="lp-scheda">
+                    <span class="lp-icona">📶</span>
+                    <h3>Anche senza segnale</h3>
+                    <p>Si installa sul telefono come un'app e si apre anche in cantiere senza rete. I dati sono salvati nel cloud, su server in Europa.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="lp-sezione">
+            <div class="lp-storia">
+                <blockquote>"Cantierometro è nato per l'impresa edile di mio padre. Quello che prima faceva in ore su carta, ora lo fa in pochi minuti dal telefono."</blockquote>
+                <cite>Adam, fondatore di Cantierometro</cite>
+            </div>
+        </section>
+
+        <section class="lp-sezione">
+            <h2>Prezzo</h2>
+            <div class="lp-prezzo">
+                <div class="cifra">Gratis</div>
+                <p style="color: var(--muted);">durante la fase di lancio</p>
+                <ul>
+                    <li>✅ Tutte le funzioni, senza limiti</li>
+                    <li>✅ Nessuna carta di credito richiesta</li>
+                    <li>✅ Accessi per i capocantieri inclusi</li>
+                    <li>✅ Prima di un eventuale abbonamento ti avvisiamo con 30 giorni di anticipo: decidi tu</li>
+                </ul>
+                <button type="button" class="btn-primary" onclick="vaiARegistrazione()">Crea il tuo account gratis</button>
+            </div>
+        </section>
+
+        <section class="lp-sezione lp-faq">
+            <h2>Domande frequenti</h2>
+            <p class="lp-sottotitolo">Non trovi la risposta? <a href="#" style="color:#fdba74;" onclick="apriAiuto(); return false;">Scrivici</a>.</p>
+            <details>
+                <summary>Devo installare qualcosa?</summary>
+                <p>No. Funziona dal browser del telefono o del computer. Se vuoi, dal menu dell'app puoi aggiungerla alla schermata Home e la apri come un'app normale.</p>
+            </details>
+            <details>
+                <summary>Funziona su iPhone e Android?</summary>
+                <p>Sì, su tutti e due, e anche su computer e tablet. Entri con la stessa email e trovi gli stessi dati ovunque.</p>
+            </details>
+            <details>
+                <summary>Come fa a sapere se un cantiere guadagna o perde?</summary>
+                <p>Confronta il preventivo con quello che hai già speso (giornate degli operai e materiali) e stima quanto manca, in base alle giornate di lavoro e ai materiali che avevi previsto.</p>
+            </details>
+            <details>
+                <summary>Il capocantiere vede le paghe e i guadagni?</summary>
+                <p>No. Il capocantiere vede solo i nomi degli operai e dei cantieri aperti e segna le presenze. Paghe, preventivi, spese e previsioni le vede solo il titolare.</p>
+            </details>
+            <details>
+                <summary>Le paghe calcolate valgono come buste paga?</summary>
+                <p>No: sono un conteggio di giornate, ore e importi da passare al tuo consulente del lavoro, che resta chi prepara le buste paga. Con un tocco gli mandi il file Excel del mese.</p>
+            </details>
+            <details>
+                <summary>E se in cantiere non c'è segnale?</summary>
+                <p>L'app si apre lo stesso con gli ultimi dati salvati sul telefono. Le modifiche partono da sole quando torna la rete.</p>
+            </details>
+            <details>
+                <summary>I miei dati sono al sicuro?</summary>
+                <p>Sono salvati su server nell'Unione Europea, ogni impresa vede solo i propri e puoi scaricarne una copia quando vuoi. Trovi tutti i dettagli nell'<a href="privacy.html" style="color:#fdba74;">informativa privacy</a>.</p>
+            </details>
+            <details>
+                <summary>Quanto costa?</summary>
+                <p>Durante la fase di lancio è gratis. Se in futuro diventerà a pagamento, ti avviseremo via email almeno 30 giorni prima e nessun addebito partirà senza il tuo consenso.</p>
+            </details>
+        </section>
+
+        <section class="lp-finale">
+            <h2>Prova Cantierometro sul tuo prossimo cantiere</h2>
+            <p class="lp-sottotitolo">Ti bastano 5 minuti per inserire operai e cantiere.</p>
+            <div class="hero-cta">
+                <button type="button" class="cta-principale" onclick="vaiARegistrazione()">Prova gratis</button>
+                <button type="button" class="cta-secondaria" onclick="avviaModalitaDemo()">👀 Guarda la demo</button>
+            </div>
+        </section>
+    </div>
+
+    <div class="lp-footer">
+        Cantierometro · <a href="#" onclick="apriAiuto(); return false;">Contatti</a> · <a href="privacy.html">Privacy</a> · <a href="termini.html">Termini</a>
     </div>
 </div>
 
@@ -1581,6 +2021,10 @@
     const CONTATTO_EMAIL = 'adamabdalla5032009@gmail.com';
     const WHATSAPP_NUMERO = '';
 
+    // Video di presentazione su YouTube: incolla qui solo il codice del video
+    // (es. per https://youtu.be/AbCdEf12345 scrivi 'AbCdEf12345'). Se è vuoto la sezione non compare.
+    const VIDEO_YOUTUBE_ID = 'knnpnf7yiuQ';
+
     // Data dell'ultima versione di termini.html / privacy.html: viene salvata
     // nell'account insieme alla data di accettazione.
     const VERSIONE_TERMINI = '2026-11-22';
@@ -1740,6 +2184,17 @@
                 ? 'Crea il tuo account da capocantiere con il codice che ti ha dato il titolare.'
                 : testi[2];
         }
+    }
+
+    // Pulsanti "Prova gratis" della presentazione: aprono la registrazione
+    function vaiARegistrazione() {
+        if (sb) {
+            invitoAttivo = false;
+            impostaModoAuth('registrati');
+            mostraMsgAuth('');
+        }
+        document.getElementById('box-accesso').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => document.getElementById(sb ? 'auth-impresa' : 'auth-email').focus({ preventScroll: true }), 400);
     }
 
     function cambiaModoInvito() {
@@ -2590,6 +3045,11 @@
         }[ch]));
     }
 
+    // Numero con un decimale e la virgola italiana (es. 42,6)
+    function num1(n) {
+        return Number(n || 0).toFixed(1).replace('.', ',');
+    }
+
     // Moltiplicatore delle ore extra (es. maggiorazione 25% → 1,25)
     function fattoreExtra() {
         const perc = Number(db.impostazioni && db.impostazioni.maggiorazioneExtra) || 0;
@@ -2901,13 +3361,13 @@
             const extra = r.incassato !== c.ricavo
                 ? `<br><small style="color:#64748b">preventivo ${formatEuro(c.ricavo)}</small>`
                 : '';
-            const fmtGiornate = (n) => `${n.toFixed(1)} giornate`;
+            const fmtGiornate = (n) => `${num1(n)} giornate`;
             return `<tr class="${r.risultato < 0 ? 'row-loss' : ''}">
                 <td><strong>${esc(c.nome)}</strong><br><small style="color:#64748b">chiuso il ${formatData(c.chiusoIl)}</small></td>
                 <td>${formatEuro(r.incassato)}${extra}</td>
                 <td>${formatEuro(r.costi)}<br><small style="color:#64748b">Op: ${formatEuro(r.manodopera)} | Mat: ${formatEuro(r.materiali)}</small></td>
                 <td>${badge}</td>
-                <td>${r.giornateFatte.toFixed(1)} su ${r.giornatePreviste} previste${differenza(r.giornatePreviste, r.giornateFatte, fmtGiornate)}</td>
+                <td>${num1(r.giornateFatte)} su ${r.giornatePreviste} previste${differenza(r.giornatePreviste, r.giornateFatte, fmtGiornate)}</td>
                 <td>${formatEuro(r.materiali)}${r.materialiPrevisti ? ` su ${formatEuro(r.materialiPrevisti)}` : ''}${differenza(r.materialiPrevisti, r.materiali, formatEuro)}</td>
                 <td><div class="azioni-riga">
                     <button class="btn-modifica" onclick="riapriCantiere(${c.id})">↩️ Riapri</button>
@@ -3256,7 +3716,7 @@
             htmlDashCantieri += `<tr class="${rowClass}">
                 <td><strong>${nomeCant}</strong></td>
                 <td>${formatEuro(c.ricavo)}</td>
-                <td><strong>${descrTempo}</strong><br><small style="color:#64748b">Mancano: ${giorniMancanti.toFixed(1)} giornate${mancaCalendario}</small></td>
+                <td><strong>${descrTempo}</strong><br><small style="color:#64748b">Mancano: ${num1(giorniMancanti)} giornate${mancaCalendario}</small></td>
                 <td>${formatEuro(costoFinaleStimato)}</td>
                 <td>${badgePrevisione}</td>
             </tr>`;
@@ -3265,7 +3725,7 @@
                 <td><strong>${nomeCant}</strong></td>
                 <td>${formatEuro(c.ricavo)}</td>
                 <td><strong>${descrTempo}</strong><br><small style="color:#64748b">${giorniRichiesti} giornate · ${oreRichieste} ore</small></td>
-                <td>Fatte: <strong>${giorniFattiEquiv.toFixed(1)} giornate</strong> (${oreFatte}h)<br><small style="color:#ea580c">Mancano: ${giorniMancanti.toFixed(1)} giornate${mancaCalendario}</small></td>
+                <td>Fatte: <strong>${num1(giorniFattiEquiv)} giornate</strong> (${oreFatte}h)<br><small style="color:#ea580c">Mancano: ${num1(giorniMancanti)} giornate${mancaCalendario}</small></td>
                 <td>${formatEuro(speseAdOggi)}<br><small style="color:#64748b">Op: ${formatEuro(costoManodoperaAdOggi)} | Mat: ${formatEuro(materialiSpesi)}${c.materialiPrevisti ? ` di ${formatEuro(c.materialiPrevisti)} previsti` : ''}</small></td>
                 <td><strong>${formatEuro(costoFinaleStimato)}</strong><br><small style="color:#64748b">${dettaglioStima}</small></td>
                 <td>${badgePrevisione}</td>
@@ -3489,6 +3949,21 @@
     }
 
     if (appGiaInstallata()) document.getElementById('voce-installa').style.display = 'none';
+
+    // Il video di YouTube si carica solo quando il visitatore preme Play:
+    // fino ad allora si vede la nostra copertina e a YouTube non arriva nessuna richiesta.
+    if (VIDEO_YOUTUBE_ID) document.getElementById('lp-video').style.display = 'block';
+
+    function avviaVideo() {
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(VIDEO_YOUTUBE_ID)}?autoplay=1&rel=0&cc_lang_pref=it`;
+        iframe.title = 'Video di presentazione di Cantierometro';
+        iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+        iframe.allowFullscreen = true;
+        const box = document.getElementById('lp-video-box');
+        box.innerHTML = '';
+        box.appendChild(iframe);
+    }
 
     if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
         window.addEventListener('load', () => {
