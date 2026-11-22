@@ -1321,6 +1321,22 @@
                 <label for="auth-password" id="label-password">Password</label>
                 <input type="password" id="auth-password" placeholder="Almeno 8 caratteri" minlength="8" autocomplete="current-password">
             </div>
+            <div class="form-group" id="gruppo-provenienza" style="display:none;">
+                <label for="auth-provenienza">Come ci hai conosciuto? <span style="font-weight:400; color:var(--muted);">(facoltativo)</span></label>
+                <select id="auth-provenienza">
+                    <option value="">Scegli…</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="passaparola">Me l'ha detto un collega o un conoscente</option>
+                    <option value="volantino">Volantino o negozio di materiali</option>
+                    <option value="google">Ricerca su Google</option>
+                    <option value="altro">Altro</option>
+                </select>
+            </div>
             <div class="form-group gruppo-consenso" id="gruppo-consenso">
                 <label for="auth-consenso">
                     <input type="checkbox" id="auth-consenso">
@@ -2025,6 +2041,29 @@
     // (es. per https://youtu.be/AbCdEf12345 scrivi 'AbCdEf12345'). Se è vuoto la sezione non compare.
     const VIDEO_YOUTUBE_ID = 'knnpnf7yiuQ';
 
+    // Da quale link è arrivato il visitatore: ?utm_source=instagram&utm_campaign=clip1
+    // (resta valido per tutta la visita, anche se ricarica la pagina)
+    const ORIGINE_VISITA = (() => {
+        const q = new URLSearchParams(window.location.search);
+        let origine = {
+            utm_source: (q.get('utm_source') || '').slice(0, 40),
+            utm_campaign: (q.get('utm_campaign') || '').slice(0, 60),
+            arrivato_da: ''
+        };
+        try {
+            if (document.referrer) {
+                const host = new URL(document.referrer).hostname;
+                if (host !== window.location.hostname) origine.arrivato_da = host.slice(0, 60);
+            }
+            if (origine.utm_source || origine.arrivato_da) {
+                sessionStorage.setItem('cantierometro_origine', JSON.stringify(origine));
+            } else {
+                origine = JSON.parse(sessionStorage.getItem('cantierometro_origine')) || origine;
+            }
+        } catch (err) { /* archivio del browser non disponibile */ }
+        return origine;
+    })();
+
     // Data dell'ultima versione di termini.html / privacy.html: viene salvata
     // nell'account insieme alla data di accettazione.
     const VERSIONE_TERMINI = '2026-11-22';
@@ -2174,6 +2213,9 @@
         };
         document.getElementById('link-password-dimenticata').style.display = modo === 'accedi' ? 'inline' : 'none';
 
+        document.getElementById('gruppo-provenienza').style.display =
+            (modo === 'registrati' && !invitoAttivo) ? 'block' : 'none';
+
         const linkInvito = document.getElementById('link-codice-invito');
         linkInvito.style.display = modo === 'registrati' ? 'block' : 'none';
         linkInvito.textContent = invitoAttivo
@@ -2249,6 +2291,10 @@
                     datiAccount.codice_invito = codice;
                 } else {
                     datiAccount.nome_impresa = nomeImpresa;
+                    // Da dove arriva la nuova impresa (serve a capire quale canale funziona)
+                    const provenienza = document.getElementById('auth-provenienza').value;
+                    if (provenienza) datiAccount.provenienza = provenienza;
+                    Object.entries(ORIGINE_VISITA).forEach(([k, val]) => { if (val) datiAccount[k] = val; });
                 }
                 const { data, error } = await sb.auth.signUp({
                     email,
