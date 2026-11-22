@@ -187,6 +187,50 @@
             text-decoration: underline;
         }
 
+        .gruppo-consenso label {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-weight: 500;
+            font-size: 0.84rem;
+            line-height: 1.4;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .gruppo-consenso input {
+            width: auto;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .gruppo-consenso a,
+        .link-legali a {
+            color: var(--primary-dark);
+        }
+
+        .link-legali {
+            margin-top: 16px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-align: center;
+        }
+
+        .link-legali a {
+            color: #cbd5e1;
+        }
+
+        .footer-app {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--muted);
+            padding: 10px 15px 0;
+        }
+
+        .footer-app a {
+            color: var(--muted);
+        }
+
         .stato-salvataggio {
             font-size: 0.8rem;
             color: #cbd5e1;
@@ -665,6 +709,12 @@
                 <label for="auth-password" id="label-password">Password</label>
                 <input type="password" id="auth-password" placeholder="Almeno 8 caratteri" minlength="8" autocomplete="current-password">
             </div>
+            <div class="form-group gruppo-consenso" id="gruppo-consenso">
+                <label for="auth-consenso">
+                    <input type="checkbox" id="auth-consenso">
+                    <span>Ho letto e accetto i <a href="termini.html" target="_blank" rel="noopener">Termini di servizio</a> e l'<a href="privacy.html" target="_blank" rel="noopener">Informativa privacy</a>.</span>
+                </label>
+            </div>
             <div class="auth-actions">
                 <button type="submit" class="btn-primary" id="auth-submit">Entra</button>
                 <button type="button" class="btn-demo" onclick="avviaModalitaDemo()">Prova con dati di esempio (Demo)</button>
@@ -674,6 +724,9 @@
                 <a href="#" id="link-password-dimenticata" onclick="impostaModoAuth('recupero'); return false;">Password dimenticata?</a>
             </div>
         </form>
+    </div>
+    <div class="link-legali">
+        <a href="privacy.html">Informativa privacy</a> · <a href="termini.html">Termini di servizio</a>
     </div>
 </div>
 
@@ -990,6 +1043,10 @@
 
 </div>
 
+<div class="footer-app">
+    <a href="privacy.html" target="_blank" rel="noopener">Informativa privacy</a> · <a href="termini.html" target="_blank" rel="noopener">Termini di servizio</a>
+</div>
+
 <div id="toast">Operazione completata!</div>
 
 <script>
@@ -1003,6 +1060,10 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_U-ET1hnDGFBGgQaYi-A8bg_kGiPWK-w';
 
     const ORE_PER_GIORNO = 8;
+
+    // Data dell'ultima versione di termini.html / privacy.html: viene salvata
+    // nell'account insieme alla data di accettazione.
+    const VERSIONE_TERMINI = '2026-11-22';
 
     const sb = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
         ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -1081,11 +1142,12 @@
         const campi = {
             impresa: document.getElementById('gruppo-impresa'),
             email: document.getElementById('gruppo-email'),
-            password: document.getElementById('gruppo-password')
+            password: document.getElementById('gruppo-password'),
+            consenso: document.getElementById('gruppo-consenso')
         };
         const visibili = {
             'accedi': ['email', 'password'],
-            'registrati': ['impresa', 'email', 'password'],
+            'registrati': ['impresa', 'email', 'password', 'consenso'],
             'recupero': ['email'],
             'nuova-password': ['password']
         }[modo];
@@ -1150,7 +1212,14 @@
                 const { data, error } = await sb.auth.signUp({
                     email,
                     password,
-                    options: { data: { nome_impresa: nomeImpresa }, emailRedirectTo: urlApp() }
+                    options: {
+                        data: {
+                            nome_impresa: nomeImpresa,
+                            termini_accettati_il: new Date().toISOString(),
+                            versione_termini: VERSIONE_TERMINI
+                        },
+                        emailRedirectTo: urlApp()
+                    }
                 });
                 if (error) throw error;
                 if (data.session) {
