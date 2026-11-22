@@ -802,6 +802,46 @@
             background: #15803d;
         }
 
+        .btn-modifica {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .azioni-riga {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .azioni-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .azioni-form .btn-primary {
+            flex: 1;
+        }
+
+        .btn-annulla {
+            background: #e2e8f0;
+            color: var(--text);
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .card.in-modifica {
+            outline: 3px solid #38bdf8;
+        }
+
         .primi-passi {
             border-top: 4px solid var(--primary);
         }
@@ -1060,8 +1100,8 @@
     <div id="cantieri" class="section">
         <div class="grid-2">
             <div class="card">
-                <h2>🏢 Nuovo Cantiere (con Tempo Richiesto)</h2>
-                <form onsubmit="aggiungiCantiere(event)">
+                <h2 id="titolo-form-cantiere">🏢 Nuovo Cantiere (con Tempo Richiesto)</h2>
+                <form id="form-cantiere" onsubmit="aggiungiCantiere(event)">
                     <div class="form-group">
                         <label>Nome Cantiere / Cliente</label>
                         <input type="text" id="cant-nome" placeholder="Es. Ristrutturazione Appartamento Rossi" required>
@@ -1088,12 +1128,16 @@
                             <input type="number" step="0.01" min="0" id="cant-materiali-previsti" placeholder="5000">
                             <span class="help-text">Quanto pensi di spendere in materiali per tutto il lavoro.</span>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="gruppo-materiali-iniziali">
                             <label for="cant-materiali">Materiali già comprati (€)</label>
-                            <input type="number" step="0.01" min="0" id="cant-materiali" value="0" required>
+                            <input type="number" step="0.01" min="0" id="cant-materiali" value="0">
+                            <span class="help-text">Diventa la prima voce dell'elenco spese.</span>
                         </div>
                     </div>
-                    <button type="submit" class="btn-primary">+ Crea Cantiere</button>
+                    <div class="azioni-form">
+                        <button type="submit" class="btn-primary" id="btn-salva-cantiere">+ Crea Cantiere</button>
+                        <button type="button" class="btn-annulla" id="btn-annulla-cantiere" style="display:none;" onclick="annullaModificaCantiere()">Annulla</button>
+                    </div>
                 </form>
             </div>
 
@@ -1101,14 +1145,24 @@
                 <h2>➕ Aggiungi Spesa Materiali a Cantiere</h2>
                 <form onsubmit="aggiungiSpesaMateriale(event)">
                     <div class="form-group">
-                        <label>Seleziona Cantiere</label>
+                        <label for="spesa-cantiere">Seleziona Cantiere</label>
                         <select id="spesa-cantiere" required></select>
                     </div>
                     <div class="form-group">
-                        <label>Importo Fattura / Materiali (€)</label>
-                        <input type="number" step="0.01" id="spesa-importo" placeholder="450.00" required>
-                        <span class="help-text">Cemento, ferro, piastrelle, noleggio ponteggi, ecc.</span>
+                        <label for="spesa-descrizione">Descrizione</label>
+                        <input type="text" id="spesa-descrizione" maxlength="120" placeholder="Es. Cemento e ferro - fattura Edilmarket">
                     </div>
+                    <div class="grid-2" style="gap:10px;">
+                        <div class="form-group">
+                            <label for="spesa-data">Data</label>
+                            <input type="date" id="spesa-data" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="spesa-importo">Importo (€)</label>
+                            <input type="number" step="0.01" min="0.01" id="spesa-importo" placeholder="450.00" required>
+                        </div>
+                    </div>
+                    <span class="help-text" style="margin-bottom: 12px;">Cemento, ferro, piastrelle, noleggio ponteggi, ecc. Ogni spesa compare nell'elenco qui sotto e si può eliminare.</span>
                     <button type="submit" class="btn-primary">Aggiungi Costo Materiali</button>
                 </form>
             </div>
@@ -1132,6 +1186,30 @@
                         </tr>
                     </thead>
                     <tbody id="lista-cantieri"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>
+                <span>🧾 Elenco Spese Materiali</span>
+                <div class="month-picker-wrap">
+                    <label for="filtro-spese-cantiere" style="margin:0;">Cantiere:</label>
+                    <select id="filtro-spese-cantiere" style="width:auto;" onchange="aggiornaUI()"></select>
+                </div>
+            </h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Cantiere</th>
+                            <th>Descrizione</th>
+                            <th>Importo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-spese"></tbody>
                 </table>
             </div>
         </div>
@@ -1167,8 +1245,8 @@
 
         <div class="grid-2">
             <div class="card">
-                <h2>👷 Aggiungi Operaio (Paga Giornaliera)</h2>
-                <form onsubmit="aggiungiOperaio(event)">
+                <h2 id="titolo-form-operaio">👷 Aggiungi Operaio (Paga Giornaliera)</h2>
+                <form id="form-operaio" onsubmit="aggiungiOperaio(event)">
                     <div class="form-group">
                         <label>Nome e Cognome</label>
                         <input type="text" id="op-nome" placeholder="Es. Marco Bianchi" required>
@@ -1180,9 +1258,12 @@
                     <div class="form-group">
                         <label>Paga Giornaliera (€ al giorno - 8 ore)</label>
                         <input type="number" step="1" id="op-paga-giorno" placeholder="120" required>
-                        <span class="help-text">Le eventuali ore in più vengono calcolate automaticamente.</span>
+                        <span class="help-text" id="aiuto-paga">Le eventuali ore in più vengono calcolate automaticamente.</span>
                     </div>
-                    <button type="submit" class="btn-primary">+ Salva Operaio</button>
+                    <div class="azioni-form">
+                        <button type="submit" class="btn-primary" id="btn-salva-operaio">+ Salva Operaio</button>
+                        <button type="button" class="btn-annulla" id="btn-annulla-operaio" style="display:none;" onclick="annullaModificaOperaio()">Annulla</button>
+                    </div>
                 </form>
             </div>
 
@@ -1335,12 +1416,34 @@
 
     function normalizzaDB(dati) {
         const d = (dati && typeof dati === 'object') ? dati : {};
-        return {
+        const nuovo = {
+            ...d,
             operai: Array.isArray(d.operai) ? d.operai : [],
             cantieri: Array.isArray(d.cantieri) ? d.cantieri : [],
             presenze: Array.isArray(d.presenze) ? d.presenze : [],
             documenti: Array.isArray(d.documenti) ? d.documenti : []
         };
+        // Le spese materiali sono un elenco (data, descrizione, importo).
+        // I dati della versione precedente avevano solo un totale: diventa la prima voce,
+        // così non si perde nulla. "materiali" resta il totale, sempre ricalcolato.
+        nuovo.cantieri.forEach(c => {
+            if (!Array.isArray(c.spese)) {
+                const precedente = Number(c.materiali) || 0;
+                c.spese = precedente > 0
+                    ? [{ id: 1, data: '', descrizione: 'Spese registrate prima dell\'elenco', importo: precedente }]
+                    : [];
+            }
+            ricalcolaMateriali(c);
+        });
+        return nuovo;
+    }
+
+    function serveConversioneSpese(dati) {
+        return !!(dati && Array.isArray(dati.cantieri) && dati.cantieri.some(c => !Array.isArray(c.spese)));
+    }
+
+    function ricalcolaMateriali(cantiere) {
+        cantiere.materiali = cantiere.spese.reduce((acc, s) => acc + (Number(s.importo) || 0), 0);
     }
 
     function getLocalISODate(dateObj = new Date()) {
@@ -1355,6 +1458,7 @@
     const meseCorrenteISO = oggiISO.slice(0, 7);
 
     document.getElementById('squadra-data').value = oggiISO;
+    document.getElementById('spesa-data').value = oggiISO;
     document.getElementById('filtro-mese').value = meseCorrenteISO;
 
     function mostraToast(msg) {
@@ -1515,6 +1619,14 @@
 
             impresaId = membro.impresa_id;
             versioneCloud = riga.versione;
+
+            // Copia di sicurezza su questo dispositivo prima di convertire i dati al nuovo formato
+            if (serveConversioneSpese(riga.dati)) {
+                try {
+                    const chiave = `cantierometro_copia_prima_elenco_spese_${impresaId}`;
+                    if (!localStorage.getItem(chiave)) localStorage.setItem(chiave, JSON.stringify(riga.dati));
+                } catch (err) { /* archivio del browser non disponibile: si prosegue */ }
+            }
             db = normalizzaDB(riga.dati);
             isDemoMode = false;
             currentUser = {
@@ -1729,15 +1841,29 @@
         const scadenzaTra12Giorni = new Date(oggi);
         scadenzaTra12Giorni.setDate(oggi.getDate() + 12);
 
-        db = {
+        db = normalizzaDB({
             operai: [
                 { id: 101, nome: "Marco Bianchi", ruolo: "Capocantiere", pagaGiornaliera: 160.00 },
                 { id: 102, nome: "Giuseppe Neri", ruolo: "Muratore Specializzato", pagaGiornaliera: 128.00 },
                 { id: 103, nome: "Luca Rossi", ruolo: "Manovale", pagaGiornaliera: 104.00 }
             ],
             cantieri: [
-                { id: 201, nome: "Ristrutturazione Appartamento Rossi", ricavo: 18000.00, materiali: 3200.00, materialiPrevisti: 5500.00, giorniLavoro: 15, operaiMedi: 3, giorniStimati: 45 },
-                { id: 202, nome: "Rifacimento Tetto Condominio Sole", ricavo: 9500.00, materiali: 4600.00, materialiPrevisti: 5200.00, giorniLavoro: 14, operaiMedi: 3, giorniStimati: 42 }
+                {
+                    id: 201, nome: "Ristrutturazione Appartamento Rossi", ricavo: 18000.00, materialiPrevisti: 5500.00,
+                    giorniLavoro: 15, operaiMedi: 3, giorniStimati: 45,
+                    spese: [
+                        { id: 501, data: g1, descrizione: "Cartongesso e profili", importo: 1800.00 },
+                        { id: 502, data: g2, descrizione: "Piastrelle bagno", importo: 1400.00 }
+                    ]
+                },
+                {
+                    id: 202, nome: "Rifacimento Tetto Condominio Sole", ricavo: 9500.00, materialiPrevisti: 5200.00,
+                    giorniLavoro: 14, operaiMedi: 3, giorniStimati: 42,
+                    spese: [
+                        { id: 503, data: g1, descrizione: "Tegole e listelli", importo: 3100.00 },
+                        { id: 504, data: g2, descrizione: "Noleggio ponteggio (1 mese)", importo: 1500.00 }
+                    ]
+                }
             ],
             presenze: [
                 { id: 301, data: g1, cantiereId: 201, operaioId: 101, giorni: 1, oreExtra: 2, costoTotale: 200.00, note: "Tracciamento e direzione" },
@@ -1748,7 +1874,7 @@
             documenti: [
                 { id: 401, operaioId: 101, tipo: "Visita Medica / Idoneità", scadenza: getLocalISODate(scadenzaTra12Giorni) }
             ]
-        };
+        });
 
         configuraStatoUtenteUI();
         aggiornaUI();
@@ -1773,6 +1899,10 @@
         const badge = document.getElementById('header-user-badge');
         const btnSvuotaDemo = document.getElementById('btn-svuota-demo');
         const demoBanner = document.getElementById('demo-banner');
+
+        // Nessun modulo deve restare "in modifica" quando cambia l'utente o si apre la demo
+        annullaModificaOperaio();
+        annullaModificaCantiere();
 
         if (isDemoMode) {
             badge.innerText = '👀 Modalità Demo';
@@ -2056,18 +2186,61 @@
         salvaDB();
     }
 
+    let operaioInModifica = null;
+    let cantiereInModifica = null;
+
     function aggiungiOperaio(e) {
         e.preventDefault();
-        db.operai.push({
-            id: Date.now(),
+        const dati = {
             nome: document.getElementById('op-nome').value.trim(),
             ruolo: document.getElementById('op-ruolo').value.trim(),
             pagaGiornaliera: parseFloat(document.getElementById('op-paga-giorno').value)
-        });
+        };
+
+        if (operaioInModifica) {
+            const op = db.operai.find(o => o.id === operaioInModifica);
+            if (op) Object.assign(op, dati);
+            annullaModificaOperaio();
+            salvaDB();
+            renderizzaListaSquadra();
+            mostraToast('✏️ Operaio aggiornato!');
+            return;
+        }
+
+        db.operai.push({ id: Date.now(), ...dati });
         e.target.reset();
         salvaDB();
         renderizzaListaSquadra();
         mostraToast('👷 Operaio aggiunto!');
+    }
+
+    function modificaOperaio(id) {
+        const op = db.operai.find(o => o.id === id);
+        if (!op) return;
+        operaioInModifica = id;
+        document.getElementById('op-nome').value = op.nome;
+        document.getElementById('op-ruolo').value = op.ruolo;
+        document.getElementById('op-paga-giorno').value = op.pagaGiornaliera;
+        document.getElementById('titolo-form-operaio').textContent = `✏️ Modifica: ${op.nome}`;
+        document.getElementById('btn-salva-operaio').textContent = 'Salva modifiche';
+        document.getElementById('btn-annulla-operaio').style.display = 'inline-block';
+        document.getElementById('aiuto-paga').textContent =
+            'Se cambi la paga, vale da adesso: le giornate già registrate restano con la paga di allora.';
+        const form = document.getElementById('form-operaio');
+        form.closest('.card').classList.add('in-modifica');
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('op-nome').focus({ preventScroll: true });
+    }
+
+    function annullaModificaOperaio() {
+        operaioInModifica = null;
+        const form = document.getElementById('form-operaio');
+        form.reset();
+        form.closest('.card').classList.remove('in-modifica');
+        document.getElementById('titolo-form-operaio').textContent = '👷 Aggiungi Operaio (Paga Giornaliera)';
+        document.getElementById('btn-salva-operaio').textContent = '+ Salva Operaio';
+        document.getElementById('btn-annulla-operaio').style.display = 'none';
+        document.getElementById('aiuto-paga').textContent = 'Le eventuali ore in più vengono calcolate automaticamente.';
     }
 
     function eliminaOperaio(id) {
@@ -2078,15 +2251,57 @@
             : '';
         if (!confirm(`Eliminare l'operaio ${op ? op.nome : ''}?${avviso}`)) return;
         db.operai = db.operai.filter(o => o.id !== id);
+        if (operaioInModifica === id) annullaModificaOperaio();
         salvaDB();
         renderizzaListaSquadra();
+    }
+
+    function modificaCantiere(id) {
+        const c = db.cantieri.find(x => x.id === id);
+        if (!c) return;
+        cantiereInModifica = id;
+        // I cantieri creati prima avevano solo le giornate totali: diventano "N giorni × 1 operaio"
+        const operai = c.operaiMedi || 1;
+        const giorni = c.giorniLavoro || c.giorniStimati;
+        document.getElementById('cant-nome').value = c.nome;
+        document.getElementById('cant-ricavo').value = c.ricavo;
+        document.getElementById('cant-giorni-stimati').value = giorni;
+        document.getElementById('cant-operai-medi').value = operai;
+        document.getElementById('cant-materiali-previsti').value = c.materialiPrevisti || '';
+        aggiornaAnteprimaGiornate();
+        document.getElementById('gruppo-materiali-iniziali').style.display = 'none';
+        document.getElementById('titolo-form-cantiere').textContent = `✏️ Modifica: ${c.nome}`;
+        document.getElementById('btn-salva-cantiere').textContent = 'Salva modifiche';
+        document.getElementById('btn-annulla-cantiere').style.display = 'inline-block';
+        const form = document.getElementById('form-cantiere');
+        form.closest('.card').classList.add('in-modifica');
+        vaiATab('cantieri');
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('cant-nome').focus({ preventScroll: true });
+    }
+
+    function annullaModificaCantiere() {
+        cantiereInModifica = null;
+        const form = document.getElementById('form-cantiere');
+        form.reset();
+        form.closest('.card').classList.remove('in-modifica');
+        document.getElementById('cant-materiali').value = 0;
+        document.getElementById('gruppo-materiali-iniziali').style.display = 'block';
+        document.getElementById('titolo-form-cantiere').textContent = '🏢 Nuovo Cantiere (con Tempo Richiesto)';
+        document.getElementById('btn-salva-cantiere').textContent = '+ Crea Cantiere';
+        document.getElementById('btn-annulla-cantiere').style.display = 'none';
+        aggiornaAnteprimaGiornate();
+    }
+
+    function testoOperai(n) {
+        return n === 1 ? '1 operaio' : `${n} operai`;
     }
 
     function aggiornaAnteprimaGiornate() {
         const giorni = parseFloat(document.getElementById('cant-giorni-stimati').value);
         const operai = parseFloat(document.getElementById('cant-operai-medi').value);
         document.getElementById('anteprima-giornate').textContent = (giorni > 0 && operai > 0)
-            ? `${giorni} giorni × ${operai} operai = ${giorni * operai} giornate di lavoro.`
+            ? `${giorni} giorni × ${testoOperai(operai)} = ${giorni * operai} giornate di lavoro.`
             : 'Es. 15 giorni × 3 operai = 45 giornate di lavoro.';
     }
 
@@ -2094,17 +2309,35 @@
         e.preventDefault();
         const giorniLavoro = parseFloat(document.getElementById('cant-giorni-stimati').value) || 10;
         const operaiMedi = parseFloat(document.getElementById('cant-operai-medi').value) || 1;
-        db.cantieri.push({
-            id: Date.now(),
+        const dati = {
             nome: document.getElementById('cant-nome').value.trim(),
             ricavo: parseFloat(document.getElementById('cant-ricavo').value),
             giorniLavoro: giorniLavoro,
             operaiMedi: operaiMedi,
             // Giornate-uomo totali: è il valore usato dalla previsione
             giorniStimati: giorniLavoro * operaiMedi,
-            materialiPrevisti: parseFloat(document.getElementById('cant-materiali-previsti').value) || 0,
-            materiali: parseFloat(document.getElementById('cant-materiali').value) || 0
-        });
+            materialiPrevisti: parseFloat(document.getElementById('cant-materiali-previsti').value) || 0
+        };
+
+        if (cantiereInModifica) {
+            const c = db.cantieri.find(x => x.id === cantiereInModifica);
+            if (c) Object.assign(c, dati);
+            annullaModificaCantiere();
+            salvaDB();
+            mostraToast('✏️ Cantiere aggiornato!');
+            return;
+        }
+
+        const materialiIniziali = parseFloat(document.getElementById('cant-materiali').value) || 0;
+        const nuovo = {
+            id: Date.now(),
+            ...dati,
+            spese: materialiIniziali > 0
+                ? [{ id: Date.now() + 1, data: getLocalISODate(), descrizione: 'Materiali già comprati alla creazione', importo: materialiIniziali }]
+                : []
+        };
+        ricalcolaMateriali(nuovo);
+        db.cantieri.push(nuovo);
         e.target.reset();
         document.getElementById('cant-materiali').value = 0;
         aggiornaAnteprimaGiornate();
@@ -2117,12 +2350,32 @@
         const cantId = Number(document.getElementById('spesa-cantiere').value);
         const importo = parseFloat(document.getElementById('spesa-importo').value);
         const cantiere = db.cantieri.find(c => c.id === cantId);
-        if (cantiere) {
-            cantiere.materiali += importo;
-            e.target.reset();
-            salvaDB();
-            mostraToast('➕ Spesa materiali aggiunta!');
-        }
+        if (!cantiere || !(importo > 0)) return;
+
+        cantiere.spese.push({
+            id: Date.now(),
+            data: document.getElementById('spesa-data').value || getLocalISODate(),
+            descrizione: document.getElementById('spesa-descrizione').value.trim(),
+            importo: importo
+        });
+        ricalcolaMateriali(cantiere);
+        document.getElementById('spesa-descrizione').value = '';
+        document.getElementById('spesa-importo').value = '';
+        salvaDB();
+        mostraToast('➕ Spesa materiali aggiunta!');
+    }
+
+    function eliminaSpesa(cantId, spesaId) {
+        const cantiere = db.cantieri.find(c => c.id === cantId);
+        if (!cantiere) return;
+        const spesa = cantiere.spese.find(s => s.id === spesaId);
+        if (!spesa) return;
+        const descr = spesa.descrizione ? `"${spesa.descrizione}" ` : '';
+        if (!confirm(`Eliminare la spesa ${descr}di ${formatEuro(spesa.importo)} dal cantiere "${cantiere.nome}"?`)) return;
+        cantiere.spese = cantiere.spese.filter(s => s.id !== spesaId);
+        ricalcolaMateriali(cantiere);
+        salvaDB();
+        mostraToast('🗑️ Spesa eliminata');
     }
 
     function eliminaCantiere(id) {
@@ -2133,6 +2386,7 @@
             : '';
         if (!confirm(`Eliminare il cantiere "${cant ? cant.nome : ''}"? L'operazione non si può annullare.${avviso}`)) return;
         db.cantieri = db.cantieri.filter(c => c.id !== id);
+        if (cantiereInModifica === id) annullaModificaCantiere();
         salvaDB();
     }
 
@@ -2239,7 +2493,10 @@
                 <td><strong>${formatEuro(o.pagaGiornaliera)}/gg</strong></td>
                 <td>${formatEuro(valOra)}/h</td>
                 <td>${ggStorici} gg</td>
-                <td><button class="btn-danger" onclick="eliminaOperaio(${o.id})">Elimina</button></td>
+                <td><div class="azioni-riga">
+                    <button class="btn-modifica" onclick="modificaOperaio(${o.id})">Modifica</button>
+                    <button class="btn-danger" onclick="eliminaOperaio(${o.id})">Elimina</button>
+                </div></td>
             </tr>`;
         }).join('') : '<tr><td colspan="6" class="empty-msg">Nessun operaio inserito.</td></tr>';
 
@@ -2306,10 +2563,10 @@
 
             const nomeCant = esc(c.nome);
             const descrTempo = c.operaiMedi
-                ? `${c.giorniLavoro} gg × ${c.operaiMedi} operai`
+                ? `${c.giorniLavoro} gg × ${testoOperai(c.operaiMedi)}`
                 : `${giorniRichiesti} giornate`;
             const mancaCalendario = (c.operaiMedi && giorniMancanti > 0)
-                ? ` ≈ ${Math.ceil(giorniMancanti / c.operaiMedi)} gg con ${c.operaiMedi} operai`
+                ? ` ≈ ${Math.ceil(giorniMancanti / c.operaiMedi)} gg con ${testoOperai(c.operaiMedi)}`
                 : '';
             const dettaglioStima = [
                 `+${formatEuro(costoManodoperaMancante)} manodopera`,
@@ -2340,7 +2597,10 @@
                 <td>${formatEuro(speseAdOggi)}<br><small style="color:#64748b">Op: ${formatEuro(costoManodoperaAdOggi)} | Mat: ${formatEuro(materialiSpesi)}${c.materialiPrevisti ? ` di ${formatEuro(c.materialiPrevisti)} previsti` : ''}</small></td>
                 <td><strong>${formatEuro(costoFinaleStimato)}</strong><br><small style="color:#64748b">${dettaglioStima}</small></td>
                 <td>${badgePrevisione}</td>
-                <td><button class="btn-danger" onclick="eliminaCantiere(${c.id})">Elimina</button></td>
+                <td><div class="azioni-riga">
+                    <button class="btn-modifica" onclick="modificaCantiere(${c.id})">Modifica</button>
+                    <button class="btn-danger" onclick="eliminaCantiere(${c.id})">Elimina</button>
+                </div></td>
             </tr>`;
         }).join('') : '<tr><td colspan="8" class="empty-msg">Nessun cantiere creato.</td></tr>';
 
@@ -2361,6 +2621,7 @@
             </tr>`;
         }).join('') : '<tr><td colspan="7" class="empty-msg">Nessuna giornata registrata.</td></tr>';
 
+        renderizzaSpese();
         renderizzaPrimiPassi();
 
         document.getElementById('kpi-cantieri').innerText = db.cantieri.length;
@@ -2369,6 +2630,33 @@
         kpiUtileEl.innerText = formatEuro(previsioneUtileComplessivo);
         kpiUtileEl.className = previsioneUtileComplessivo >= 0 ? 'text-success' : 'text-danger';
         document.getElementById('kpi-scadenze').innerText = countAllerte;
+    }
+
+    function renderizzaSpese() {
+        const filtro = document.getElementById('filtro-spese-cantiere');
+        const scelto = filtro.value;
+        filtro.innerHTML = '<option value="">Tutti</option>' +
+            db.cantieri.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+        if (scelto && db.cantieri.some(c => String(c.id) === scelto)) filtro.value = scelto;
+
+        const righe = [];
+        db.cantieri
+            .filter(c => !filtro.value || String(c.id) === filtro.value)
+            .forEach(c => c.spese.forEach(s => righe.push({ c, s })));
+        // Più recenti in alto; quelle senza data (convertite dalla versione precedente) in fondo
+        righe.sort((a, b) => (b.s.data || '').localeCompare(a.s.data || '') || b.s.id - a.s.id);
+
+        const totale = righe.reduce((acc, r) => acc + (Number(r.s.importo) || 0), 0);
+        document.getElementById('lista-spese').innerHTML = righe.length
+            ? righe.map(({ c, s }) => `<tr>
+                    <td>${s.data ? formatData(s.data) : '—'}</td>
+                    <td>${esc(c.nome)}</td>
+                    <td>${s.descrizione ? esc(s.descrizione) : '<span style="color:#94a3b8">—</span>'}</td>
+                    <td><strong>${formatEuro(s.importo)}</strong></td>
+                    <td><button class="btn-danger" onclick="eliminaSpesa(${c.id}, ${s.id})">Elimina</button></td>
+                </tr>`).join('') +
+                `<tr><td colspan="3" style="text-align:right;"><strong>Totale</strong></td><td colspan="2"><strong>${formatEuro(totale)}</strong></td></tr>`
+            : '<tr><td colspan="5" class="empty-msg">Nessuna spesa registrata.</td></tr>';
     }
 
     function renderizzaPrimiPassi() {
