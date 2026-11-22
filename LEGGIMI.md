@@ -136,6 +136,30 @@ mandarti un suggerimento o una segnalazione.
    in `index.html` compila `WHATSAPP_NUMERO` con prefisso 39 e senza spazi, es. `'393331234567'`.
    Il tasto verde compare da solo.
 
+## 5-quater. Accessi per il capocantiere
+
+Il titolare può dare a un capocantiere un accesso che serve **solo a segnare le presenze**:
+non vede paghe, preventivi, spese e previsioni, nemmeno provando a leggere il database.
+
+1. **Attivazione (una volta sola):** in Supabase → SQL Editor → New query incolla
+   `supabase/capocantiere.sql` e premi **Run**.
+2. **Dall'app (titolare):** ☰ Menu → **Accessi capocantiere** → **Crea un codice invito** →
+   **Invia su WhatsApp**. Il messaggio contiene un link già pronto con il codice.
+3. **Il capocantiere** apre il link, inserisce email e password e accetta i termini: entra
+   direttamente nella sua schermata "Squadra in cantiere".
+4. Il codice vale **7 giorni** e **una sola volta**. Dalla stessa finestra il titolare vede chi ha
+   accesso, può **togliere l'accesso** o **annullare** un codice non usato.
+
+Le giornate segnate dal capocantiere compaiono al titolare con la nota "Segnato dal
+capocantiere"; il costo lo calcola il database con la paga e la maggiorazione degli straordinari.
+
+## 5-quinquies. App sul telefono
+
+Il sito si può installare come un'app (☰ Menu → **Installa l'app sul telefono**) e si apre anche
+senza segnale, mostrando gli ultimi dati salvati su quel telefono. Le modifiche fatte senza
+segnale partono da sole quando torna la rete. I file che servono sono `manifest.json`, `sw.js`
+e la cartella `icone`.
+
 ## 6. Pubblica la nuova versione su GitHub
 
 1. Vai sul repository `cantiere-pro` su GitHub → **Add file → Upload files**.

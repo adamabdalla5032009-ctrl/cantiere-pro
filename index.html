@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cantierometro - Gestione Giornate, Cantieri e Scadenze</title>
+    <meta name="description" content="Presenze, paghe, spese e previsione di guadagno o perdita dei cantieri.">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icone/icona-192.png">
+    <link rel="apple-touch-icon" href="icone/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Cantierometro">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
     <style>
         :root {
@@ -168,6 +177,16 @@
         .auth-msg-errore { background: #fee2e2; color: #991b1b; }
         .auth-msg-avviso { background: #fef3c7; color: #92400e; }
 
+        .link-invito {
+            display: block;
+            text-align: left;
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin: -4px 0 14px;
+            text-decoration: none;
+        }
+
         .auth-links {
             display: flex;
             justify-content: space-between;
@@ -317,6 +336,63 @@
 
         .btn-whatsapp {
             background: #16a34a;
+        }
+
+        .box-invito {
+            margin-top: 12px;
+            padding: 14px;
+            border: 2px dashed var(--primary);
+            border-radius: 10px;
+            background: #fff7ed;
+            text-align: center;
+        }
+
+        .codice-invito {
+            display: block;
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            margin: 6px 0 12px;
+            font-family: ui-monospace, Consolas, monospace;
+        }
+
+        .box-invito button.btn-contatto {
+            border: none;
+            width: 100%;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .lista-accessi .voce-accesso {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .lista-accessi .voce-accesso small {
+            display: block;
+            color: var(--muted);
+        }
+
+        /* Modalità capocantiere: si vede solo la sua schermata */
+        .sezione-capo {
+            display: none;
+        }
+
+        body.modo-capo .sezione-capo {
+            display: block;
+        }
+
+        body.modo-capo nav,
+        body.modo-capo .container > .section,
+        body.modo-capo #demo-banner,
+        body.modo-capo .solo-titolare,
+        body.modo-capo .solo-titolare-account,
+        body.modo-capo #stato-salvataggio {
+            display: none !important;
         }
 
         .menu-account {
@@ -938,6 +1014,12 @@
                 <label for="auth-impresa">Nome Impresa</label>
                 <input type="text" id="auth-impresa" placeholder="Es. Edil Rossi S.r.l." autocomplete="organization">
             </div>
+            <div class="form-group" id="gruppo-codice">
+                <label for="auth-codice">Codice invito del titolare</label>
+                <input type="text" id="auth-codice" placeholder="Es. 4F7A9C21" maxlength="12" autocomplete="off" style="text-transform: uppercase; letter-spacing: 2px;">
+                <span class="help-text">Entrerai come capocantiere nell'impresa che ti ha invitato.</span>
+            </div>
+            <a href="#" id="link-codice-invito" class="link-invito" onclick="cambiaModoInvito(); return false;"></a>
             <div class="form-group" id="gruppo-email">
                 <label for="auth-email">Email</label>
                 <input type="email" id="auth-email" placeholder="nome@esempio.it" autocomplete="email">
@@ -977,8 +1059,10 @@
             <summary class="btn-small">☰ Menu</summary>
             <div class="menu-voci">
                 <button type="button" onclick="apriAiuto()">💬 Aiuto, contatti e suggerimenti</button>
-                <button type="button" onclick="esportaDati()">⬇️ Salva backup dei dati</button>
-                <button type="button" onclick="document.getElementById('importFile').click()">⬆️ Ripristina da un backup</button>
+                <button type="button" id="voce-installa" onclick="installaApp()">📲 Installa l'app sul telefono</button>
+                <button type="button" class="solo-titolare-account" onclick="apriAccessi()">👥 Accessi capocantiere</button>
+                <button type="button" class="solo-titolare" onclick="esportaDati()">⬇️ Salva backup dei dati</button>
+                <button type="button" class="solo-titolare" onclick="document.getElementById('importFile').click()">⬆️ Ripristina da un backup</button>
                 <button type="button" class="voce-esci" onclick="esciProfilo()">🚪 Esci</button>
             </div>
         </details>
@@ -994,6 +1078,40 @@
 </nav>
 
 <div class="container">
+
+    <!-- SCHERMATA DEL CAPOCANTIERE: solo presenze, nessun importo -->
+    <div id="sezione-capo" class="sezione-capo">
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <h2>👷 Squadra in cantiere</h2>
+            <p class="help-text" style="margin-bottom: 14px;">Sei collegato come <strong>capocantiere</strong> di <strong id="capo-impresa"></strong>. Segna chi ha lavorato e dove: paghe e costi li calcola l'app per il titolare.</p>
+            <form onsubmit="capoSalvaPresenze(event)">
+                <div class="grid-2" style="gap:10px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="capo-data">Data lavoro</label>
+                        <input type="date" id="capo-data" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="capo-cantiere">Cantiere</label>
+                        <select id="capo-cantiere" required></select>
+                    </div>
+                </div>
+                <span class="help-text" style="margin-bottom: 12px;">Tocca <strong>❌ Non qui</strong> per mettere l'operaio in cantiere (diventa verde), poi indica giornate e ore extra.</span>
+                <div id="capo-lista-operai"></div>
+                <button type="submit" class="btn-primary" id="capo-salva" style="margin-top: 15px;">✓ Salva la giornata</button>
+            </form>
+        </div>
+        <div class="card">
+            <h2>📋 Giornate degli ultimi 14 giorni</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr><th>Data</th><th>Operaio</th><th>Cantiere</th><th>Giornate + Extra</th></tr>
+                    </thead>
+                    <tbody id="capo-storico"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <div id="demo-banner" class="demo-banner">
         <div>
@@ -1282,6 +1400,18 @@
             </div>
         </div>
 
+        <div class="card">
+            <h2>⚙️ Impostazioni Paghe</h2>
+            <form onsubmit="salvaImpostazioniPaghe(event)">
+                <div class="form-group">
+                    <label for="imp-maggiorazione">Maggiorazione delle ore extra (%)</label>
+                    <input type="number" id="imp-maggiorazione" min="0" max="200" step="1" placeholder="0" style="max-width: 160px;">
+                    <span class="help-text">Es. 25 = ogni ora extra vale il 25% in più di un'ora normale. Vale per le giornate segnate da adesso in poi: quelle già registrate non cambiano.</span>
+                </div>
+                <button type="submit" class="btn-primary" style="max-width: 220px;">Salva impostazione</button>
+            </form>
+        </div>
+
         <div class="grid-2">
             <div class="card">
                 <h2 id="titolo-form-operaio">👷 Aggiungi Operaio (Paga Giornaliera)</h2>
@@ -1408,6 +1538,30 @@
     </div>
 </div>
 
+<div id="modal-accessi" class="modal" style="display:none;" onclick="if (event.target === this) chiudiAccessi()">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="titolo-accessi">
+        <button type="button" class="modal-chiudi" onclick="chiudiAccessi()" aria-label="Chiudi">✕</button>
+        <h2 id="titolo-accessi">👥 Accessi capocantiere</h2>
+        <p class="modal-testo">Il capocantiere segna dal suo telefono chi lavora e dove. <strong>Non vede</strong> paghe, preventivi, spese e previsioni.</p>
+
+        <button type="button" class="btn-primary" id="btn-crea-invito" onclick="creaInvito()">+ Crea un codice invito</button>
+        <div id="box-nuovo-invito" class="box-invito" style="display:none;">
+            <span class="help-text">Codice invito (vale 7 giorni, per una persona):</span>
+            <strong id="codice-nuovo-invito" class="codice-invito"></strong>
+            <div class="contatti">
+                <a id="link-invito-whatsapp" class="btn-contatto btn-whatsapp" target="_blank" rel="noopener">🟢 Invia su WhatsApp</a>
+                <button type="button" class="btn-contatto" onclick="copiaInvito()">📋 Copia il messaggio</button>
+            </div>
+        </div>
+
+        <h3>Persone con accesso</h3>
+        <div id="lista-membri" class="lista-accessi"><p class="help-text">Caricamento…</p></div>
+
+        <h3>Codici non ancora usati</h3>
+        <div id="lista-inviti" class="lista-accessi"></div>
+    </div>
+</div>
+
 <div id="toast">Operazione completata!</div>
 
 <script>
@@ -1449,6 +1603,11 @@
     let salvataggioPendente = false;
     let ultimoSalvataggioFallito = false;
 
+    // Ruolo dell'utente collegato: 'titolare' (vede tutto) o 'capocantiere' (segna solo le presenze)
+    let ruoloUtente = null;
+    let capoDati = null;
+    let invitoAttivo = false;
+
     function dbVuoto() {
         return { operai: [], cantieri: [], presenze: [], documenti: [] };
     }
@@ -1460,7 +1619,8 @@
             operai: Array.isArray(d.operai) ? d.operai : [],
             cantieri: Array.isArray(d.cantieri) ? d.cantieri : [],
             presenze: Array.isArray(d.presenze) ? d.presenze : [],
-            documenti: Array.isArray(d.documenti) ? d.documenti : []
+            documenti: Array.isArray(d.documenti) ? d.documenti : [],
+            impostazioni: { maggiorazioneExtra: 0, ...(d.impostazioni && typeof d.impostazioni === 'object' ? d.impostazioni : {}) }
         };
         // Le spese materiali sono un elenco (data, descrizione, importo).
         // I dati della versione precedente avevano solo un totale: diventa la prima voce,
@@ -1532,11 +1692,12 @@
             impresa: document.getElementById('gruppo-impresa'),
             email: document.getElementById('gruppo-email'),
             password: document.getElementById('gruppo-password'),
-            consenso: document.getElementById('gruppo-consenso')
+            consenso: document.getElementById('gruppo-consenso'),
+            codice: document.getElementById('gruppo-codice')
         };
         const visibili = {
             'accedi': ['email', 'password'],
-            'registrati': ['impresa', 'email', 'password', 'consenso'],
+            'registrati': invitoAttivo ? ['codice', 'email', 'password', 'consenso'] : ['impresa', 'email', 'password', 'consenso'],
             'recupero': ['email'],
             'nuova-password': ['password']
         }[modo];
@@ -1568,6 +1729,24 @@
             return false;
         };
         document.getElementById('link-password-dimenticata').style.display = modo === 'accedi' ? 'inline' : 'none';
+
+        const linkInvito = document.getElementById('link-codice-invito');
+        linkInvito.style.display = modo === 'registrati' ? 'block' : 'none';
+        linkInvito.textContent = invitoAttivo
+            ? '← Non ho un codice: crea la mia impresa'
+            : '👷 Sei un capocantiere e hai un codice invito? Tocca qui';
+        if (modo === 'registrati') {
+            document.getElementById('auth-sottotitolo').textContent = invitoAttivo
+                ? 'Crea il tuo account da capocantiere con il codice che ti ha dato il titolare.'
+                : testi[2];
+        }
+    }
+
+    function cambiaModoInvito() {
+        invitoAttivo = !invitoAttivo;
+        impostaModoAuth('registrati');
+        mostraMsgAuth('');
+        if (invitoAttivo) document.getElementById('auth-codice').focus();
     }
 
     function traduciErrore(err) {
@@ -1577,6 +1756,8 @@
         if (/already registered|already exists/i.test(msg)) return 'Esiste già un account con questa email. Prova ad accedere.';
         if (/password should be|password is too short|weak password/i.test(msg)) return 'Password troppo debole: usa almeno 8 caratteri.';
         if (/rate limit|too many/i.test(msg)) return 'Troppi tentativi. Riprova tra qualche minuto.';
+        if (/database error saving new user/i.test(msg)) return 'Registrazione non riuscita: il codice invito potrebbe essere scaduto o già usato.';
+        if (/could not find the function|schema cache/i.test(msg)) return 'Questa funzione non è ancora attiva: il titolare deve completare la configurazione (capocantiere.sql).';
         if (/failed to fetch|network/i.test(msg)) return 'Connessione assente. Controlla internet e riprova.';
         return msg;
     }
@@ -1598,17 +1779,26 @@
                 if (error) throw error;
                 await entraConUtente(data.user);
             } else if (modoAuth === 'registrati') {
+                const datiAccount = {
+                    termini_accettati_il: new Date().toISOString(),
+                    versione_termini: VERSIONE_TERMINI
+                };
+                if (invitoAttivo) {
+                    const codice = document.getElementById('auth-codice').value.trim().toUpperCase();
+                    const { data: nomeImpresaInvito, error: errInvito } = await sb.rpc('verifica_invito', { p_codice: codice });
+                    if (errInvito) throw errInvito;
+                    if (!nomeImpresaInvito) {
+                        mostraMsgAuth('Codice invito non valido, già usato o scaduto. Chiedi al titolare un codice nuovo.', 'errore');
+                        return;
+                    }
+                    datiAccount.codice_invito = codice;
+                } else {
+                    datiAccount.nome_impresa = nomeImpresa;
+                }
                 const { data, error } = await sb.auth.signUp({
                     email,
                     password,
-                    options: {
-                        data: {
-                            nome_impresa: nomeImpresa,
-                            termini_accettati_il: new Date().toISOString(),
-                            versione_termini: VERSIONE_TERMINI
-                        },
-                        emailRedirectTo: urlApp()
-                    }
+                    options: { data: datiAccount, emailRedirectTo: urlApp() }
                 });
                 if (error) throw error;
                 if (data.session) {
@@ -1647,7 +1837,12 @@
                 .limit(1)
                 .maybeSingle();
             if (error) throw error;
-            if (!membro) throw new Error('Nessuna impresa collegata a questo account.');
+            if (!membro) throw new Error('Nessuna impresa collegata a questo account. Se eri capocantiere, chiedi al titolare un nuovo codice invito.');
+
+            if (membro.ruolo === 'capocantiere') {
+                await entraComeCapo(user, membro);
+                return;
+            }
 
             const { data: riga, error: errDati } = await sb
                 .from('dati_impresa')
@@ -1668,11 +1863,24 @@
             }
             db = normalizzaDB(riga.dati);
             isDemoMode = false;
+            ruoloUtente = 'titolare';
             currentUser = {
                 id: user.id,
                 email: user.email,
                 display: (membro.imprese && membro.imprese.nome) || user.email
             };
+
+            // Modifiche fatte senza segnale e mai arrivate nel cloud?
+            const cache = leggiCacheLocale(user.id);
+            let recuperate = false;
+            if (cache && cache.pendente && cache.impresaId === impresaId) {
+                if (cache.versione === riga.versione) {
+                    db = normalizzaDB(cache.dati);
+                    recuperate = true;
+                } else if (confirm('Alcune modifiche fatte su questo telefono senza segnale non sono arrivate nel cloud, e nel frattempo i dati sono stati cambiati da un altro dispositivo.\n\nVuoi scaricarne una copia per non perderle? (Si apre con "Ripristina da un backup")')) {
+                    scaricaFile(JSON.stringify(cache.dati), `modifiche_offline_${getLocalISODate()}.json`, 'application/json');
+                }
+            }
 
             document.getElementById('auth-password').value = '';
             mostraMsgAuth('');
@@ -1680,14 +1888,50 @@
             aggiornaUI();
             renderizzaListaSquadra();
             impostaStatoSalvataggio('salvato');
-            mostraToast(`Bentornato, ${currentUser.display}!`);
+            if (recuperate) {
+                salvaDB();
+                mostraToast('📶 Ho recuperato le modifiche fatte senza segnale');
+            } else {
+                salvaCacheLocale(false);
+                mostraToast(`Bentornato, ${currentUser.display}!`);
+            }
             proponiImportDatiLocali();
         } catch (err) {
-            mostraMsgAuth('Impossibile caricare i tuoi dati: ' + traduciErrore(err), 'errore');
-            await sb.auth.signOut();
+            // Senza segnale non si esce dall'account: se c'è una copia dei dati su questo telefono si usa quella
+            if (erroreDiRete(err)) {
+                if (!entraOffline(user)) {
+                    mostraMsgAuth('Non c\'è connessione e su questo dispositivo non ci sono dati salvati. Riprova quando torna il segnale.', 'errore');
+                }
+            } else {
+                mostraMsgAuth('Impossibile caricare i tuoi dati: ' + traduciErrore(err), 'errore');
+                await sb.auth.signOut();
+            }
         } finally {
             entrataInCorso = false;
         }
+    }
+
+    function entraOffline(user) {
+        const cache = leggiCacheLocale(user.id);
+        if (!cache || !cache.dati) return false;
+        impresaId = cache.impresaId;
+        versioneCloud = cache.versione;
+        db = normalizzaDB(cache.dati);
+        isDemoMode = false;
+        ruoloUtente = 'titolare';
+        currentUser = { id: user.id, email: user.email, display: cache.display || user.email };
+        configuraStatoUtenteUI();
+        aggiornaUI();
+        renderizzaListaSquadra();
+        if (cache.pendente) {
+            ultimoSalvataggioFallito = true;
+            impostaStatoSalvataggio('errore');
+            programmaSalvataggio(5000);
+        } else {
+            impostaStatoSalvataggio('nascosto');
+        }
+        mostraToast('📴 Sei senza segnale: vedi gli ultimi dati di questo telefono. Le modifiche partono quando torna la rete.');
+        return true;
     }
 
     // Dati salvati con la vecchia versione (nome + PIN) su questo dispositivo:
@@ -1730,7 +1974,15 @@
 
     function inizializzaAuth() {
         const recupero = window.location.hash.includes('type=recovery');
-        impostaModoAuth(recupero ? 'nuova-password' : 'accedi');
+        // Link di invito ricevuto dal titolare: ...?invito=CODICE
+        const codiceDaLink = new URLSearchParams(window.location.search).get('invito');
+        if (codiceDaLink && !recupero) {
+            invitoAttivo = true;
+            document.getElementById('auth-codice').value = codiceDaLink.toUpperCase();
+            impostaModoAuth('registrati');
+        } else {
+            impostaModoAuth(recupero ? 'nuova-password' : 'accedi');
+        }
 
         if (!sb) {
             mostraMsgAuth('Accesso non ancora configurato: per ora puoi usare solo la demo.', 'avviso');
@@ -1808,6 +2060,7 @@
                 versioneCloud = data[0].versione;
                 ultimoSalvataggioFallito = false;
                 impostaStatoSalvataggio(salvataggioPendente ? 'in-corso' : 'salvato');
+                salvaCacheLocale(salvataggioPendente);
             }
         } catch (err) {
             console.error('Salvataggio non riuscito:', err);
@@ -1840,12 +2093,15 @@
         aggiornaUI();
         renderizzaListaSquadra();
         impostaStatoSalvataggio('salvato');
+        salvaCacheLocale(false);
         alert('I dati sono stati modificati da un altro dispositivo.\n\nHo caricato la versione più recente: ripeti l\'ultima modifica che avevi fatto.');
     }
 
     // Tornando sull'app (es. dal telefono) si caricano le modifiche fatte altrove.
     async function ricaricaSeAggiornato() {
-        if (document.visibilityState !== 'visible' || !sb || !impresaId || isDemoMode || haModificheNonSalvate()) return;
+        if (document.visibilityState !== 'visible') return;
+        if (ruoloUtente === 'capocantiere') return aggiornaDatiCapo();
+        if (!sb || !impresaId || isDemoMode || haModificheNonSalvate()) return;
         const { data, error } = await sb
             .from('dati_impresa')
             .select('dati, versione')
@@ -1856,6 +2112,7 @@
         db = normalizzaDB(data.dati);
         aggiornaUI();
         renderizzaListaSquadra();
+        salvaCacheLocale(false);
         mostraToast('🔄 Dati aggiornati');
     }
 
@@ -1943,6 +2200,11 @@
         annullaModificaOperaio();
         annullaModificaCantiere();
 
+        document.body.classList.toggle('modo-capo', !isDemoMode && ruoloUtente === 'capocantiere');
+        document.querySelectorAll('.solo-titolare-account').forEach(el => {
+            el.style.display = (!isDemoMode && ruoloUtente === 'titolare') ? '' : 'none';
+        });
+
         if (isDemoMode) {
             badge.innerText = '👀 Modalità Demo';
             badge.classList.add('demo-mode');
@@ -1973,7 +2235,10 @@
         isDemoMode = false;
         impresaId = null;
         versioneCloud = 0;
+        ruoloUtente = null;
+        capoDati = null;
         db = dbVuoto();
+        document.body.classList.remove('modo-capo');
         impostaStatoSalvataggio('nascosto');
 
         if (sb && !eraDemo) await sb.auth.signOut();
@@ -1986,7 +2251,10 @@
     function salvaDB() {
         if (!currentUser) return;
         aggiornaUI();
-        if (!isDemoMode) programmaSalvataggio();
+        if (!isDemoMode) {
+            programmaSalvataggio();
+            salvaCacheLocale(true);
+        }
     }
 
     // Chiude il menu quando si sceglie una voce o si tocca fuori
@@ -2027,7 +2295,10 @@
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') chiudiAiuto();
+        if (e.key === 'Escape') {
+            chiudiAiuto();
+            chiudiAccessi();
+        }
     });
 
     async function inviaFeedback(e) {
@@ -2060,6 +2331,216 @@
             console.error('Invio suggerimento non riuscito:', err);
             alert('Non sono riuscito a inviare il messaggio. Ti apro l\'email per mandarlo da lì.');
             window.location.href = linkEmail(`Cantierometro - ${tipo}`, testo);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // =====================================================================
+    // ACCESSI CAPOCANTIERE (lato titolare)
+    // =====================================================================
+
+    let messaggioInvito = '';
+
+    function apriAccessi() {
+        if (isDemoMode || !sb || ruoloUtente !== 'titolare') {
+            return alert('Gli accessi per il capocantiere si gestiscono con un account vero, non nella demo.');
+        }
+        document.getElementById('box-nuovo-invito').style.display = 'none';
+        document.getElementById('modal-accessi').style.display = 'flex';
+        caricaAccessi();
+    }
+
+    function chiudiAccessi() {
+        document.getElementById('modal-accessi').style.display = 'none';
+    }
+
+    async function caricaAccessi() {
+        const boxMembri = document.getElementById('lista-membri');
+        const boxInviti = document.getElementById('lista-inviti');
+        try {
+            const [{ data: membri, error: e1 }, { data: inviti, error: e2 }] = await Promise.all([
+                sb.rpc('membri_impresa'),
+                sb.rpc('inviti_attivi')
+            ]);
+            if (e1) throw e1;
+            if (e2) throw e2;
+
+            boxMembri.innerHTML = (membri || []).map(m => `
+                <div class="voce-accesso">
+                    <div><strong>${esc(m.email)}</strong><small>${m.ruolo === 'titolare' ? 'Titolare (tu)' : 'Capocantiere'}</small></div>
+                    ${m.ruolo === 'capocantiere' ? `<button type="button" class="btn-danger" data-user="${esc(m.user_id)}" data-email="${esc(m.email)}" onclick="rimuoviAccesso(this.dataset.user, this.dataset.email)">Togli accesso</button>` : ''}
+                </div>`).join('') || '<p class="help-text">Nessuno.</p>';
+
+            boxInviti.innerHTML = (inviti || []).length
+                ? inviti.map(i => `
+                    <div class="voce-accesso">
+                        <div><strong style="letter-spacing:2px;">${esc(i.codice)}</strong><small>scade il ${new Date(i.scade_il).toLocaleDateString('it-IT')}</small></div>
+                        <button type="button" class="btn-danger" onclick="annullaInvito('${esc(i.codice)}')">Annulla</button>
+                    </div>`).join('')
+                : '<p class="help-text">Nessun codice in attesa.</p>';
+        } catch (err) {
+            boxMembri.innerHTML = `<p class="help-text text-danger">${esc(traduciErrore(err))}</p>`;
+            boxInviti.innerHTML = '';
+        }
+    }
+
+    async function creaInvito() {
+        const btn = document.getElementById('btn-crea-invito');
+        btn.disabled = true;
+        try {
+            const { data: codice, error } = await sb.rpc('crea_invito');
+            if (error) throw error;
+            const link = `${urlApp()}?invito=${codice}`;
+            messaggioInvito =
+                `Ciao! Ti ho dato l'accesso a Cantierometro per segnare le presenze in cantiere.\n\n` +
+                `1. Apri questo link: ${link}\n` +
+                `2. Inserisci la tua email e una password\n\n` +
+                `Codice invito: ${codice} (vale 7 giorni)`;
+            document.getElementById('codice-nuovo-invito').textContent = codice;
+            document.getElementById('link-invito-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(messaggioInvito)}`;
+            document.getElementById('box-nuovo-invito').style.display = 'block';
+            caricaAccessi();
+        } catch (err) {
+            alert('Non sono riuscito a creare il codice: ' + traduciErrore(err));
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function copiaInvito() {
+        try {
+            await navigator.clipboard.writeText(messaggioInvito);
+            mostraToast('📋 Messaggio copiato: incollalo dove vuoi');
+        } catch (err) {
+            prompt('Copia questo messaggio:', messaggioInvito);
+        }
+    }
+
+    async function annullaInvito(codice) {
+        if (!confirm(`Annullare il codice ${codice}? Non si potrà più usare.`)) return;
+        const { error } = await sb.rpc('annulla_invito', { p_codice: codice });
+        if (error) return alert(traduciErrore(error));
+        caricaAccessi();
+    }
+
+    async function rimuoviAccesso(userId, email) {
+        if (!confirm(`Togliere l'accesso a ${email}? Non potrà più segnare presenze. Le giornate già segnate restano.`)) return;
+        const { error } = await sb.rpc('rimuovi_membro', { p_user: userId });
+        if (error) return alert(traduciErrore(error));
+        mostraToast('Accesso tolto');
+        caricaAccessi();
+    }
+
+    // =====================================================================
+    // SCHERMATA DEL CAPOCANTIERE
+    // =====================================================================
+
+    async function entraComeCapo(user, membro) {
+        const { data, error } = await sb.rpc('capo_dati');
+        if (error) throw error;
+        ruoloUtente = 'capocantiere';
+        impresaId = membro.impresa_id;
+        isDemoMode = false;
+        capoDati = data;
+        db = dbVuoto();
+        currentUser = {
+            id: user.id,
+            email: user.email,
+            display: `${data.impresa || (membro.imprese && membro.imprese.nome) || ''} · capocantiere`
+        };
+        document.getElementById('auth-password').value = '';
+        mostraMsgAuth('');
+        configuraStatoUtenteUI();
+        document.getElementById('capo-data').value = getLocalISODate();
+        renderizzaCapo();
+        mostraToast(`Ciao! Sei collegato come capocantiere.`);
+    }
+
+    async function aggiornaDatiCapo() {
+        if (ruoloUtente !== 'capocantiere' || !sb) return;
+        const { data, error } = await sb.rpc('capo_dati');
+        if (error || !data) return;
+        capoDati = data;
+        renderizzaCapo();
+    }
+
+    function renderizzaCapo() {
+        if (!capoDati) return;
+        document.getElementById('capo-impresa').textContent = capoDati.impresa || '';
+
+        const select = document.getElementById('capo-cantiere');
+        const scelto = select.value;
+        select.innerHTML = capoDati.cantieri.length
+            ? capoDati.cantieri.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')
+            : '<option value="">-- Nessun cantiere aperto --</option>';
+        if (scelto && capoDati.cantieri.some(c => String(c.id) === scelto)) select.value = scelto;
+
+        document.getElementById('capo-lista-operai').innerHTML = capoDati.operai.length
+            ? capoDati.operai.map(o => `
+                <div class="squadra-row" data-opid="${o.id}">
+                    <div class="squadra-info" style="flex:1;">
+                        <strong>${esc(o.nome)}</strong>
+                        <small>${esc(o.ruolo || '')}</small>
+                    </div>
+                    <div>
+                        <button type="button" class="btn-toggle-presenza" onclick="togglePresenzaOperaio(this)">❌ Non qui</button>
+                    </div>
+                    <div class="squadra-inputs-wrapper">
+                        <div class="squadra-field">
+                            <span>GIORNATE</span>
+                            <input type="number" class="squadra-input-gg" step="0.5" min="0" max="1" value="0">
+                        </div>
+                        <div class="squadra-field">
+                            <span>+ ORE EXTRA</span>
+                            <input type="number" class="squadra-input-extra" step="0.5" min="0" max="16" value="0">
+                        </div>
+                    </div>
+                </div>`).join('')
+            : '<p class="empty-msg">Il titolare non ha ancora inserito operai.</p>';
+
+        const nomeOp = (id) => (capoDati.operai.find(o => o.id === id) || {}).nome || '-';
+        const nomeCant = (id) => (capoDati.cantieri.find(c => c.id === id) || {}).nome || 'Cantiere chiuso';
+        const storico = [...capoDati.presenze].sort((a, b) => String(b.data).localeCompare(String(a.data)));
+        document.getElementById('capo-storico').innerHTML = storico.length
+            ? storico.map(p => `<tr>
+                    <td>${formatData(p.data)}</td>
+                    <td>${esc(nomeOp(p.operaioId))}</td>
+                    <td>${esc(nomeCant(p.cantiereId))}</td>
+                    <td><strong>${p.giorni} gg</strong> ${p.oreExtra > 0 ? `<span class="badge badge-warn">+${p.oreExtra}h extra</span>` : ''}</td>
+                </tr>`).join('')
+            : '<tr><td colspan="4" class="empty-msg">Nessuna giornata negli ultimi 14 giorni.</td></tr>';
+    }
+
+    async function capoSalvaPresenze(e) {
+        e.preventDefault();
+        const data = document.getElementById('capo-data').value;
+        const cantiere = Number(document.getElementById('capo-cantiere').value);
+        if (!cantiere) return alert('Scegli un cantiere.');
+
+        const righe = [];
+        document.querySelectorAll('#capo-lista-operai .squadra-row.presente').forEach(row => {
+            const giorni = parseFloat(row.querySelector('.squadra-input-gg').value) || 0;
+            const oreExtra = parseFloat(row.querySelector('.squadra-input-extra').value) || 0;
+            if (giorni > 0 || oreExtra > 0) righe.push({ operaioId: Number(row.dataset.opid), giorni, oreExtra });
+        });
+        if (!righe.length) return alert('Metti almeno un operaio in verde e indica le giornate.');
+
+        const giaPresenti = righe.filter(r => capoDati.presenze.some(p => p.operaioId === r.operaioId && p.data === data));
+        if (giaPresenti.length) {
+            const nomi = giaPresenti.map(r => '• ' + ((capoDati.operai.find(o => o.id === r.operaioId) || {}).nome || '')).join('\n');
+            if (!confirm(`Il ${formatData(data)} risultano già giornate per:\n\n${nomi}\n\nSe le salvi di nuovo verranno contate due volte. Salvare comunque?`)) return;
+        }
+
+        const btn = document.getElementById('capo-salva');
+        btn.disabled = true;
+        try {
+            const { data: salvate, error } = await sb.rpc('capo_salva_presenze', { p_data: data, p_cantiere: cantiere, p_righe: righe });
+            if (error) throw error;
+            mostraToast(`✓ Salvate ${salvate} giornate!`);
+            await aggiornaDatiCapo();
+        } catch (err) {
+            alert('Non sono riuscito a salvare: ' + traduciErrore(err) + (erroreDiRete(err) ? '' : '\n\nSe il problema continua, avvisa il titolare.'));
         } finally {
             btn.disabled = false;
         }
@@ -2109,9 +2590,24 @@
         }[ch]));
     }
 
+    // Moltiplicatore delle ore extra (es. maggiorazione 25% → 1,25)
+    function fattoreExtra() {
+        const perc = Number(db.impostazioni && db.impostazioni.maggiorazioneExtra) || 0;
+        return 1 + perc / 100;
+    }
+
     function calcolaCostoPresenza(pagaGiornaliera, giorni, oreExtra) {
         const pagaOraria = pagaGiornaliera / ORE_PER_GIORNO;
-        return (giorni * pagaGiornaliera) + (oreExtra * pagaOraria);
+        return (giorni * pagaGiornaliera) + (oreExtra * pagaOraria * fattoreExtra());
+    }
+
+    function salvaImpostazioniPaghe(e) {
+        e.preventDefault();
+        const perc = parseFloat(document.getElementById('imp-maggiorazione').value) || 0;
+        if (perc < 0 || perc > 200) return alert('Inserisci una percentuale tra 0 e 200.');
+        db.impostazioni.maggiorazioneExtra = perc;
+        salvaDB();
+        mostraToast(perc ? `⚙️ Ore extra pagate +${perc}%` : '⚙️ Ore extra pagate come le ore normali');
     }
 
     function togglePresenzaOperaio(btn) {
@@ -2662,7 +3158,7 @@
 
         document.getElementById('lista-operai').innerHTML = db.operai.length ? db.operai.map(o => {
             const ggStorici = db.presenze.filter(x => x.operaioId === o.id).reduce((acc, x) => acc + x.giorni, 0);
-            const valOra = o.pagaGiornaliera / ORE_PER_GIORNO;
+            const valOra = o.pagaGiornaliera / ORE_PER_GIORNO * fattoreExtra();
             return `<tr>
                 <td><strong>${esc(o.nome)}</strong></td>
                 <td>${esc(o.ruolo)}</td>
@@ -2799,6 +3295,9 @@
                 <td><button class="btn-danger" onclick="eliminaPresenza(${r.id})">X</button></td>
             </tr>`;
         }).join('') : '<tr><td colspan="7" class="empty-msg">Nessuna giornata registrata.</td></tr>';
+
+        const campoMagg = document.getElementById('imp-maggiorazione');
+        if (document.activeElement !== campoMagg) campoMagg.value = db.impostazioni.maggiorazioneExtra || 0;
 
         renderizzaSpese();
         renderizzaPrimiPassi();
@@ -2958,6 +3457,72 @@
             event.target.value = '';
         };
         reader.readAsText(file);
+    }
+
+    // =====================================================================
+    // APP SUL TELEFONO (installazione e avvio senza segnale)
+    // =====================================================================
+
+    let richiestaInstallazione = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        richiestaInstallazione = e;
+    });
+
+    function appGiaInstallata() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    async function installaApp() {
+        if (richiestaInstallazione) {
+            richiestaInstallazione.prompt();
+            const scelta = await richiestaInstallazione.userChoice;
+            richiestaInstallazione = null;
+            if (scelta.outcome === 'accepted') mostraToast('📲 Cantierometro installato!');
+            return;
+        }
+        const iPhone = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        alert(iPhone
+            ? 'Per installare Cantierometro su iPhone:\n\n1. Apri questa pagina con Safari\n2. Tocca il tasto Condividi (il quadrato con la freccia in su)\n3. Scegli "Aggiungi alla schermata Home"'
+            : 'Per installare Cantierometro:\n\n1. Apri il menu del browser (i tre puntini ⋮)\n2. Scegli "Installa app" oppure "Aggiungi a schermata Home"');
+    }
+
+    if (appGiaInstallata()) document.getElementById('voce-installa').style.display = 'none';
+
+    if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(err => console.warn('Installazione offline non disponibile:', err));
+        });
+    }
+
+    // Copia dei dati su questo dispositivo: serve per aprire l'app senza segnale
+    // e per non perdere le modifiche fatte mentre si era offline.
+    function chiaveCacheLocale() {
+        return currentUser && currentUser.id ? `cantierometro_cache_${currentUser.id}` : null;
+    }
+
+    function salvaCacheLocale(pendente) {
+        const chiave = chiaveCacheLocale();
+        if (!chiave || isDemoMode || ruoloUtente !== 'titolare' || !impresaId) return;
+        try {
+            localStorage.setItem(chiave, JSON.stringify({
+                impresaId, display: currentUser.display, versione: versioneCloud, pendente: !!pendente, dati: db
+            }));
+        } catch (err) { /* memoria del browser piena o non disponibile */ }
+    }
+
+    function leggiCacheLocale(userId) {
+        try {
+            const testo = localStorage.getItem(`cantierometro_cache_${userId}`);
+            return testo ? JSON.parse(testo) : null;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function erroreDiRete(err) {
+        return !navigator.onLine || /failed to fetch|network|load failed|fetch/i.test((err && err.message) || String(err));
     }
 
     inizializzaAuth();
