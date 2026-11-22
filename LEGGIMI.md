@@ -1,4 +1,4 @@
-# CantierePro – Configurazione del cloud (Fase 1)
+# Cantierometro – Configurazione del cloud (Fase 1)
 
 Da questa versione i dati non stanno più solo nel browser: ogni impresa ha un account
 (email + password) e i dati sono salvati su **Supabase**, quindi si ritrovano su ogni
@@ -70,7 +70,7 @@ dimenticata?" non arriva ai clienti. Consiglio **Resend** (gratis fino a 3.000 e
 
 ### 5.1 Un dominio tuo
 Resend (come ogni servizio serio) manda email solo da un dominio che possiedi, non da Gmail.
-Registra un dominio, per esempio `cantierepro.it` (circa 10–15 €/anno), con un registrar
+Registra un dominio, per esempio `cantierometro.it` (circa 10–15 €/anno), con un registrar
 come Aruba, Register.it, OVH o Cloudflare. Ti servirà anche per l'indirizzo del sito.
 
 ### 5.2 Resend
@@ -87,7 +87,7 @@ In Supabase → **Authentication → Emails → SMTP Settings** → **Enable cus
 | Campo | Valore |
 | --- | --- |
 | Sender email | `noreply@iltuodominio.it` |
-| Sender name | `CantierePro` |
+| Sender name | `Cantierometro` |
 | Host | `smtp.resend.com` |
 | Port | `465` |
 | Username | `resend` |
@@ -98,9 +98,9 @@ Premi **Save**.
 ### 5.4 Email in italiano
 In **Authentication → Emails → Templates**:
 
-- **Confirm signup**: oggetto `Conferma il tuo account CantierePro`. Nel corpo cancella il
+- **Confirm signup**: oggetto `Conferma il tuo account Cantierometro`. Nel corpo cancella il
   testo inglese e incolla il contenuto di `supabase/email/conferma-account.html`.
-- **Reset password**: oggetto `Reimposta la password di CantierePro`, corpo da
+- **Reset password**: oggetto `Reimposta la password di Cantierometro`, corpo da
   `supabase/email/reimposta-password.html`.
 
 Salva ogni modello.
@@ -118,11 +118,23 @@ spuntare la casella di accettazione; data e versione vengono salvate nel suo acc
 1. Apri i due file e cerca le parti evidenziate in giallo `[TRA PARENTESI QUADRE]`:
    nome o ragione sociale, indirizzo, partita IVA, email di contatto, servizio email, città del foro.
 2. Il **titolare** deve essere una persona maggiorenne o un'impresa. Se sei minorenne
-   indica un genitore, o l'impresa che gestirà CantierePro: decidilo con il commercialista.
+   indica un genitore, o l'impresa che gestirà Cantierometro: decidilo con il commercialista.
 3. Sono **bozze**: prima di avere clienti paganti falle rivedere da un consulente privacy o
    da un avvocato.
 4. Se in futuro le modifichi, aggiorna la data in alto nelle pagine e la costante
    `VERSIONE_TERMINI` in `index.html`.
+
+## 5-ter. Aiuto, contatti e suggerimenti
+
+Dal **☰ Menu → Aiuto, contatti e suggerimenti** gli utenti possono scriverti un'email o
+mandarti un suggerimento o una segnalazione.
+
+1. **Attiva i suggerimenti (una volta sola):** in Supabase → SQL Editor → New query incolla
+   `supabase/feedback.sql` e premi **Run**. I messaggi li leggi in **Table Editor → feedback**.
+   Finché non lo fai, il modulo apre l'app email al posto dell'invio diretto.
+2. **WhatsApp (facoltativo):** quando avrai un numero dedicato (consigliato WhatsApp Business),
+   in `index.html` compila `WHATSAPP_NUMERO` con prefisso 39 e senza spazi, es. `'393331234567'`.
+   Il tasto verde compare da solo.
 
 ## 6. Pubblica la nuova versione su GitHub
 
