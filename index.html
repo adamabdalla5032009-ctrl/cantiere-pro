@@ -109,6 +109,102 @@
             color: #94a3b8;
         }
 
+        .barra-contatti {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            width: 100%;
+            max-width: 640px;
+            margin-bottom: 26px;
+        }
+
+        .btn-whatsapp-grande,
+        .btn-problema {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            min-height: 48px;
+        }
+
+        .btn-whatsapp-grande {
+            background: #25d366;
+            color: #06301a;
+            border: none;
+            box-shadow: 0 6px 18px rgba(37, 211, 102, 0.3);
+        }
+
+        .btn-whatsapp-grande:hover {
+            background: #1fbe5b;
+        }
+
+        .btn-problema {
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+        }
+
+        .btn-problema:hover {
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        /* Fumetto con la cornetta (disegnato in CSS, nessuna immagine esterna) */
+        .icona-wa {
+            position: relative;
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid currentColor;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .icona-wa::after {
+            content: '';
+            position: absolute;
+            left: -4px;
+            bottom: -4px;
+            border-left: 6px solid transparent;
+            border-top: 7px solid currentColor;
+            transform: rotate(20deg);
+        }
+
+        .barra-contatti-grande {
+            margin: 6px auto 0;
+        }
+
+        .barra-contatti-grande .btn-whatsapp-grande,
+        .barra-contatti-grande .btn-problema {
+            padding: 15px 26px;
+            font-size: 1.05rem;
+            min-height: 56px;
+        }
+
+        .lp-contatti {
+            text-align: center;
+            padding: 30px 16px 40px;
+            margin-bottom: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .lp-contatti h2 {
+            color: white;
+            font-size: 1.35rem;
+            margin-bottom: 6px;
+        }
+
+        @media (max-width: 480px) {
+            .barra-contatti .btn-whatsapp-grande,
+            .barra-contatti .btn-problema {
+                flex: 1 1 100%;
+            }
+        }
+
         .landing {
             width: 100%;
             max-width: 980px;
@@ -726,6 +822,11 @@
             background: #f1f5f9;
         }
 
+        .menu-voci .voce-whatsapp {
+            color: #15803d;
+            font-weight: 700;
+        }
+
         .menu-voci .voce-esci {
             color: var(--danger);
             border-top: 1px solid var(--border);
@@ -1283,6 +1384,13 @@
 <body>
 
 <div id="auth-screen">
+    <div class="barra-contatti">
+        <button type="button" class="btn-whatsapp-grande" onclick="apriWhatsApp('contatto')">
+            <span class="icona-wa" aria-hidden="true"></span>Scrivici su WhatsApp
+        </button>
+        <button type="button" class="btn-problema" onclick="apriAiuto('problema')">⚠️ Segnala un problema</button>
+    </div>
+
     <div class="hero-intro">
         <h1>Scopri subito se un cantiere ti fa <span>guadagnare o perdere soldi</span>.</h1>
         <p>Registra presenze operai, spese materiali, paghe a fine mese e scadenze documenti in un unico posto — senza fogli sparsi.</p>
@@ -1498,6 +1606,17 @@
                 <button type="button" class="cta-secondaria" onclick="avviaModalitaDemo()">👀 Guarda la demo</button>
             </div>
         </section>
+
+        <section class="lp-contatti">
+            <h2>Hai una domanda o qualcosa non va?</h2>
+            <p class="lp-sottotitolo">Scrivici quando vuoi: ti risponde una persona, non un robot.</p>
+            <div class="barra-contatti barra-contatti-grande">
+                <button type="button" class="btn-whatsapp-grande" onclick="apriWhatsApp('contatto')">
+                    <span class="icona-wa" aria-hidden="true"></span>Scrivici su WhatsApp
+                </button>
+                <button type="button" class="btn-problema" onclick="apriAiuto('problema')">⚠️ Segnala un problema</button>
+            </div>
+        </section>
     </div>
 
     <div class="lp-footer">
@@ -1514,7 +1633,9 @@
         <details class="menu-account" id="menu-account">
             <summary class="btn-small">☰ Menu</summary>
             <div class="menu-voci">
-                <button type="button" onclick="apriAiuto()">💬 Aiuto, contatti e suggerimenti</button>
+                <button type="button" class="voce-whatsapp" onclick="apriWhatsApp('contatto')">💬 Scrivici su WhatsApp</button>
+                <button type="button" onclick="apriAiuto('problema')">⚠️ Segnala un problema</button>
+                <button type="button" onclick="apriAiuto('suggerimento')">💡 Suggerisci un'idea</button>
                 <button type="button" id="voce-installa" onclick="installaApp()">📲 Installa l'app sul telefono</button>
                 <button type="button" class="solo-titolare-account" onclick="apriAccessi()">👥 Accessi capocantiere</button>
                 <button type="button" class="solo-titolare" onclick="esportaDati()">⬇️ Salva backup dei dati</button>
@@ -1968,13 +2089,13 @@
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="titolo-aiuto">
         <button type="button" class="modal-chiudi" onclick="chiudiAiuto()" aria-label="Chiudi">✕</button>
         <h2 id="titolo-aiuto">💬 Aiuto e contatti</h2>
-        <p class="modal-testo">Hai un dubbio o qualcosa non funziona? Scrivici: ti risponde una persona, non un robot.</p>
+        <p class="modal-testo" id="testo-aiuto">Hai un dubbio o qualcosa non funziona? Scrivici: ti risponde una persona, non un robot.</p>
         <div class="contatti">
             <a id="link-whatsapp" class="btn-contatto btn-whatsapp" target="_blank" rel="noopener" style="display:none;">🟢 Scrivici su WhatsApp</a>
             <a id="link-email" class="btn-contatto">✉️ Scrivici un'email</a>
         </div>
 
-        <h3>Suggerisci un'idea o segnala un problema</h3>
+        <h3 id="sottotitolo-aiuto">Suggerisci un'idea o segnala un problema</h3>
         <form onsubmit="inviaFeedback(event)">
             <div class="form-group">
                 <label for="feedback-tipo">Di cosa si tratta?</label>
@@ -2035,7 +2156,7 @@
     // Contatti mostrati in "Aiuto". WHATSAPP_NUMERO: prefisso 39 + numero, senza + né spazi
     // (es. '393331234567'). Se è vuoto il tasto WhatsApp non compare.
     const CONTATTO_EMAIL = 'adamabdalla5032009@gmail.com';
-    const WHATSAPP_NUMERO = '';
+    const WHATSAPP_NUMERO = '393801707367';
 
     // Video di presentazione su YouTube: incolla qui solo il codice del video
     // (es. per https://youtu.be/AbCdEf12345 scrivi 'AbCdEf12345'). Se è vuoto la sezione non compare.
@@ -2773,20 +2894,55 @@
         return `mailto:${CONTATTO_EMAIL}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(testo || '')}`;
     }
 
-    function apriAiuto() {
+    // Messaggio già scritto per WhatsApp, con il nome dell'impresa se l'utente è collegato
+    function messaggioWhatsApp(motivo) {
         const chi = currentUser && !isDemoMode ? ` (${currentUser.display})` : '';
-        document.getElementById('link-email').href = linkEmail('Cantierometro - richiesta di aiuto' + chi);
+        return motivo === 'problema'
+            ? `Ciao, ho un problema con Cantierometro${chi}: `
+            : `Ciao! Ho una domanda su Cantierometro${chi}.`;
+    }
+
+    function linkWhatsApp(motivo) {
+        return `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(messaggioWhatsApp(motivo))}`;
+    }
+
+    function apriWhatsApp(motivo) {
+        if (!WHATSAPP_NUMERO) return apriAiuto(motivo);
+        window.open(linkWhatsApp(motivo), '_blank', 'noopener');
+    }
+
+    // modo: 'aiuto' (generico), 'problema' o 'suggerimento'
+    function apriAiuto(modo = 'aiuto') {
+        const chi = currentUser && !isDemoMode ? ` (${currentUser.display})` : '';
+        const tabella = {
+            aiuto: ['💬 Aiuto e contatti', 'Hai un dubbio o qualcosa non funziona? Scrivici: ti risponde una persona, non un robot.',
+                'Suggerisci un\'idea o segnala un problema', 'Es. Mi servirebbe poter segnare anche le mezze giornate di pioggia…', 'suggerimento'],
+            problema: ['⚠️ Segnala un problema', 'Qualcosa non funziona? Il modo più veloce è scriverci su WhatsApp: ti rispondiamo al più presto.',
+                'Oppure descrivi il problema qui', 'Cosa stavi facendo e cosa è successo? Es. ho premuto "Salva" ma la giornata non compare…', 'problema'],
+            suggerimento: ['💡 Suggerisci un\'idea', 'Cosa ti servirebbe in Cantierometro? Le idee di chi lo usa decidono le prossime novità.',
+                'Scrivi la tua idea', 'Es. Mi servirebbe poter segnare anche le mezze giornate di pioggia…', 'suggerimento']
+        };
+        const [titolo, testo, sottotitolo, segnaposto, tipo] = tabella[modo] || tabella.aiuto;
+        document.getElementById('titolo-aiuto').textContent = titolo;
+        document.getElementById('testo-aiuto').textContent = testo;
+        document.getElementById('sottotitolo-aiuto').textContent = sottotitolo;
+        document.getElementById('feedback-testo').placeholder = segnaposto;
+        document.getElementById('feedback-tipo').value = tipo;
+
+        document.getElementById('link-email').href = linkEmail(
+            (modo === 'problema' ? 'Cantierometro - segnalazione problema' : 'Cantierometro - richiesta di aiuto') + chi);
 
         const wa = document.getElementById('link-whatsapp');
         if (WHATSAPP_NUMERO) {
-            wa.href = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent('Ciao, ho bisogno di aiuto con Cantierometro' + chi)}`;
+            wa.href = linkWhatsApp(modo === 'problema' ? 'problema' : 'contatto');
+            wa.textContent = modo === 'problema' ? '🟢 Segnala il problema su WhatsApp' : '🟢 Scrivici su WhatsApp';
             wa.style.display = 'block';
         } else {
             wa.style.display = 'none';
         }
 
         document.getElementById('feedback-nota').textContent = (isDemoMode || !impresaId)
-            ? 'In modalità demo il messaggio si apre nella tua app email.'
+            ? 'Senza account il messaggio si apre nella tua app email. Per una risposta più rapida usa WhatsApp.'
             : '';
         document.getElementById('modal-aiuto').style.display = 'flex';
     }
