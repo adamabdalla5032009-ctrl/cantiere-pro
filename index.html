@@ -1,6 +1,2043 @@
 <!DOCTYPE html>
 <html lang="it">
+<head># CantierePro – Configurazione del cloud (Fase 1)
+
+Da questa versione i dati non stanno più solo nel browser: ogni impresa ha un account
+(email + password) e i dati sono salvati su **Supabase**, quindi si ritrovano su ogni
+telefono o computer. La demo funziona come prima.
+
+Finché non completi i passi qui sotto, il sito mostra "Accesso non ancora configurato"
+e si può usare solo la demo.
+
+---
+
+## 1. Crea il progetto Supabase (10 minuti)
+
+1. Vai su [supabase.com](https://supabase.com) e crea un account (piano **Free**).
+2. **New project**:
+   - Name: `cantiere-pro`
+   - Database password: generane una forte e **salvala** (es. nel gestore password).
+   - Region: **Central EU (Frankfurt)**, per tenere i dati in Europa (GDPR).
+3. Aspetta 1–2 minuti che il progetto sia pronto.
+
+## 2. Crea le tabelle e le regole di sicurezza
+
+1. Nel menu a sinistra: **SQL Editor** → **New query**.
+2. Apri il file `supabase/schema.sql` di questa cartella, copia tutto il contenuto e incollalo.
+3. Premi **Run**. Deve comparire "Success. No rows returned".
+
+Lo script crea:
+- `imprese`: un cliente = un'impresa (con i campi per l'abbonamento della fase 2);
+- `membri`: quali account possono entrare in quale impresa;
+- `dati_impresa`: i dati dell'app (operai, cantieri, presenze, documenti);
+- le regole per cui **ogni impresa vede e modifica solo i propri dati**;
+- la creazione automatica dell'impresa quando qualcuno si registra.
+
+## 3. Impostazioni di accesso
+
+In **Authentication**:
+
+1. **URL Configuration**
+   - Site URL: `https://adamabdalla5032009-ctrl.github.io/cantiere-pro/`
+   - Redirect URLs → Add URL: lo stesso indirizzo.
+2. **Sign In / Providers → Email**
+   - Email provider: attivo.
+   - Minimum password length: `8`.
+   - Confirm email: vedi il punto 5.
+
+## 4. Collega il sito a Supabase
+
+1. In **Project Settings → API Keys** (o **Data API**) copia:
+   - il **Project URL** (tipo `https://abcdefgh.supabase.co`);
+   - la chiave **anon public** oppure **publishable** (MAI la `service_role` / `secret`).
+2. Apri `index.html` e cerca `CONFIGURAZIONE SUPABASE`. Compila le due righe:
+
+   ```js
+   const SUPABASE_URL = 'https://abcdefgh.supabase.co';
+   const SUPABASE_ANON_KEY = 'la-tua-chiave-anon-o-publishable';
+   ```
+
+La chiave anon/publishable è pensata per stare nel sito: i dati sono protetti dalle
+regole del punto 2, non dalla segretezza della chiave. La chiave `service_role` invece
+non va **mai** messa nel sito.
+
+## 5. Email di conferma e recupero password
+
+Il servizio email incluso in Supabase è solo per i test: manda pochissime email l'ora e
+solo agli indirizzi dei membri del tuo team Supabase.
+
+- **Per partire con tuo padre:** in Authentication → Sign In / Providers → Email puoi
+  disattivare **Confirm email**. Così la registrazione entra subito senza email.
+- **Prima di aprire ad altre imprese:** configura un servizio email vero in
+  **Authentication → Emails → SMTP Settings** (es. Brevo o Resend, entrambi hanno un piano
+  gratuito), poi riattiva **Confirm email**. Serve anche per "Password dimenticata?".
+
+## 6. Pubblica la nuova versione su GitHub
+
+1. Vai sul repository `cantiere-pro` su GitHub → **Add file → Upload files**.
+2. Trascina `index.html` (e se vuoi anche la cartella `supabase`), poi **Commit changes**.
+3. Dopo circa un minuto GitHub Pages pubblica la nuova versione.
+
+## 7. Passaggio dei dati di tuo padre
+
+Sul **suo telefono**, nello stesso browser che usa adesso:
+
+1. **Prima di pubblicare la nuova versione**, fagli premere **"Salva Backup"** e conserva il
+   file (Drive, email). È la copia di sicurezza.
+2. Dopo la pubblicazione apre il sito, sceglie **"Registrati gratis"** e crea l'account con
+   la sua email e il nome dell'impresa.
+3. Appena entra, l'app trova i dati della vecchia versione e chiede se importarli: **OK**.
+4. Da quel momento i dati sono nel cloud: in alto vede **"☁️ Salvato"** dopo ogni modifica e
+   può entrare con lo stesso account anche dal computer.
+
+Se l'import automatico non compare (es. browser diverso), può usare **"⬆️ Ripristina"** con
+il file di backup del punto 1.
+
+---
+
+## Da sapere
+
+- **Piano gratuito di Supabase:** il progetto va in pausa dopo circa una settimana senza
+  nessun utilizzo; con l'uso quotidiano non succede. Quando ci saranno clienti paganti
+  conviene il piano Pro.
+- **Due dispositivi insieme:** se due persone modificano nello stesso momento, il secondo
+  salvataggio viene bloccato e l'app ricarica i dati aggiornati chiedendo di ripetere
+  l'ultima modifica. Nessuno sovrascrive il lavoro dell'altro senza accorgersene.
+- **Prossimo passo (fase 2):** abbonamenti con Stripe. Le colonne `stato_abbonamento` e
+  `prova_fino_al` della tabella `imprese` sono già pronte.
+
+<!DOCTYPE html>
+<html lang="it">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CantierePro - Gestione Giornate, Cantieri e Scadenze</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+    <style>
+        :root {
+            --primary: #ea580c;
+            --primary-dark: #c2410c;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #d97706;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding-bottom: 50px;
+        }
+
+        /* Schermata Login & Landing Intro */
+        #auth-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .hero-intro {
+            max-width: 640px;
+            text-align: center;
+            color: white;
+            margin-bottom: 24px;
+        }
+
+        .hero-intro h1 {
+            font-size: 1.75rem;
+            line-height: 1.25;
+            margin-bottom: 10px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .hero-intro h1 span {
+            color: var(--primary);
+        }
+
+        .hero-intro p {
+            font-size: 0.98rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+            margin-bottom: 16px;
+        }
+
+        .hero-pills {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .hero-pill {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .auth-card {
+            background: white;
+            padding: 28px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        .auth-card h2 {
+            font-size: 1.35rem;
+            margin-bottom: 6px;
+            color: #0f172a;
+        }
+
+        .auth-card h2 span {
+            color: var(--primary);
+        }
+
+        .auth-card > p {
+            font-size: 0.88rem;
+            color: var(--muted);
+            margin-bottom: 18px;
+        }
+
+        .auth-actions {
+            display: grid;
+            grid-template-columns: 1fr 1.25fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .auth-actions {
+                grid-template-columns: 1fr;
+            }
+            .hero-intro h1 {
+                font-size: 1.4rem;
+            }
+        }
+
+        .btn-demo {
+            background: #0f172a;
+            color: white;
+            border: none;
+            padding: 12px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .btn-demo:hover {
+            background: #334155;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .auth-msg {
+            font-size: 0.85rem;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        .auth-msg-ok { background: #dcfce7; color: #166534; }
+        .auth-msg-errore { background: #fee2e2; color: #991b1b; }
+        .auth-msg-avviso { background: #fef3c7; color: #92400e; }
+
+        .auth-links {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+            font-size: 0.85rem;
+        }
+
+        .auth-links a {
+            color: var(--primary-dark);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+
+        .stato-salvataggio {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            white-space: nowrap;
+        }
+
+        .stato-salvataggio.errore {
+            color: #fca5a5;
+            font-weight: 700;
+        }
+
+        header {
+            background-color: #0f172a;
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        header h1 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        header h1 span {
+            color: var(--primary);
+        }
+
+        .user-badge {
+            background: #1e293b;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+        }
+
+        .user-badge.demo-mode {
+            background: #fff7ed;
+            color: #c2410c;
+            border-color: #fdba74;
+            font-weight: 700;
+        }
+
+        .backup-btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-small {
+            background: #334155;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-small:hover {
+            background: #475569;
+        }
+
+        .btn-reset-demo {
+            background: var(--primary);
+            font-weight: 700;
+        }
+
+        .btn-reset-demo:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-logout {
+            background: #7f1d1d;
+        }
+
+        .btn-logout:hover {
+            background: #991b1b;
+        }
+
+        nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            overflow-x: auto;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        nav button {
+            flex: 1;
+            min-width: 120px;
+            padding: 14px 10px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.92rem;
+            white-space: nowrap;
+        }
+
+        nav button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: #fff7ed;
+        }
+
+        .container {
+            max-width: 1160px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+
+        .demo-banner {
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            border-left: 4px solid var(--primary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 1.15rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text);
+        }
+
+        .help-text {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            background: white;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: var(--danger);
+            border: none;
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        th {
+            background: #f8fafc;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        tr.row-loss {
+            background-color: #fef2f2;
+        }
+
+        tr.row-urgent {
+            background-color: #fff1f2;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .badge-ok { background: #dcfce7; color: var(--success); }
+        .badge-warn { background: #fef3c7; color: var(--warning); }
+        .badge-danger { background: #fee2e2; color: var(--danger); }
+
+        @keyframes pulseUrgent {
+            0% { opacity: 1; }
+            50% { opacity: 0.55; }
+            100% { opacity: 1; }
+        }
+
+        .badge-pulse {
+            animation: pulseUrgent 1.8s infinite;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-box {
+            background: white;
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .kpi-box span {
+            font-size: 0.85rem;
+            color: var(--muted);
+            display: block;
+        }
+
+        .kpi-box strong {
+            font-size: 1.45rem;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .squadra-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: #f8fafc;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .squadra-row.presente {
+            background: #f0fdf4;
+            border-color: #86efac;
+        }
+
+        .squadra-info strong {
+            display: block;
+            font-size: 0.95rem;
+        }
+
+        .squadra-info small {
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .btn-toggle-presenza {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: #ffffff;
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+
+        .squadra-row.presente .btn-toggle-presenza {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .squadra-inputs-wrapper {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+            width: 100%;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border);
+        }
+
+        .squadra-row:not(.presente) .squadra-inputs-wrapper {
+            display: none;
+        }
+
+        .squadra-field {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .squadra-field span {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--muted);
+            margin-bottom: 2px;
+        }
+
+        .squadra-input-gg, .squadra-input-extra {
+            width: 100%;
+            padding: 7px 5px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .squadra-input-extra {
+            border-color: #fdba74;
+            background: #fff7ed;
+        }
+
+        .month-picker-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .month-picker-wrap input[type="month"] {
+            width: auto;
+            padding: 6px 10px;
+            font-weight: 600;
+        }
+
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+        .empty-msg { color: var(--muted); font-style: italic; padding: 15px 0; text-align: center; }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #0f172a;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+            z-index: 100;
+        }
+
+        #toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div id="auth-screen">
+    <div class="hero-intro">
+        <h1>Scopri subito se un cantiere ti fa <span>guadagnare o perdere soldi</span>.</h1>
+        <p>Registra presenze operai, spese materiali, paghe a fine mese e scadenze documenti in un unico posto — senza fogli sparsi.</p>
+        <div class="hero-pills">
+            <span class="hero-pill">✓ Previsione utile/perdita cantiere</span>
+            <span class="hero-pill">✓ Calcolo automatico paghe e extra</span>
+            <span class="hero-pill">✓ Avvisi scadenza documenti</span>
+        </div>
+    </div>
+
+    <div class="auth-card">
+        <h2>🏗️ Cantiere<span>Pro</span></h2>
+        <p id="auth-sottotitolo">Accedi per ritrovare i tuoi dati su ogni dispositivo, oppure prova subito l'app.</p>
+        <div id="auth-msg" class="auth-msg" style="display:none;"></div>
+        <form onsubmit="inviaAuth(event)">
+            <div class="form-group" id="gruppo-impresa">
+                <label for="auth-impresa">Nome Impresa</label>
+                <input type="text" id="auth-impresa" placeholder="Es. Edil Rossi S.r.l." autocomplete="organization">
+            </div>
+            <div class="form-group" id="gruppo-email">
+                <label for="auth-email">Email</label>
+                <input type="email" id="auth-email" placeholder="nome@esempio.it" autocomplete="email">
+            </div>
+            <div class="form-group" id="gruppo-password">
+                <label for="auth-password" id="label-password">Password</label>
+                <input type="password" id="auth-password" placeholder="Almeno 8 caratteri" minlength="8" autocomplete="current-password">
+            </div>
+            <div class="auth-actions">
+                <button type="submit" class="btn-primary" id="auth-submit">Entra</button>
+                <button type="button" class="btn-demo" onclick="avviaModalitaDemo()">Prova con dati di esempio (Demo)</button>
+            </div>
+            <div class="auth-links">
+                <a href="#" id="link-cambia-modo"></a>
+                <a href="#" id="link-password-dimenticata" onclick="impostaModoAuth('recupero'); return false;">Password dimenticata?</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<header>
+    <h1>🏗️ Cantiere<span>Pro</span></h1>
+    <div class="backup-btns">
+        <span id="header-user-badge" class="user-badge">👤 Utente</span>
+        <span id="stato-salvataggio" class="stato-salvataggio"></span>
+        <button id="btn-svuota-demo" class="btn-small btn-reset-demo" style="display:none;" onclick="svuotaDemoEIniziaDaZero()">🧹 Svuota dati demo / Inizia da zero</button>
+        <button class="btn-small" onclick="esportaDati()">⬇️ Salva Backup</button>
+        <button class="btn-small" onclick="document.getElementById('importFile').click()">⬆️ Ripristina</button>
+        <button class="btn-small btn-logout" onclick="esciProfilo()">🚪 Esci</button>
+        <input type="file" id="importFile" style="display:none" accept=".json" onchange="importaDati(event)">
+    </div>
+</header>
+
+<nav>
+    <button class="active" onclick="cambiaTab('dashboard', this)">📊 Riepilogo</button>
+    <button onclick="cambiaTab('ore', this)">📅 Assegna Squadra ai Cantieri</button>
+    <button onclick="cambiaTab('cantieri', this)">🏢 Cantieri & Previsioni</button>
+    <button onclick="cambiaTab('operai', this)">👷 Operai, Paghe & Scadenze</button>
+</nav>
+
+<div class="container">
+
+    <div id="demo-banner" class="demo-banner">
+        <div>
+            <strong>👀 Stai esplorando la Modalità Demo:</strong> i dati mostrati sono simulati per farti vedere come funziona il sistema.
+        </div>
+        <button class="btn-small btn-reset-demo" onclick="svuotaDemoEIniziaDaZero()">🧹 Svuota dati demo / Inizia da zero</button>
+    </div>
+
+    <!-- TAB 1: DASHBOARD -->
+    <div id="dashboard" class="section active">
+        <div class="kpi-grid">
+            <div class="kpi-box">
+                <span>Cantieri Attivi</span>
+                <strong id="kpi-cantieri">0</strong>
+            </div>
+            <div class="kpi-box">
+                <span>Paghe Operai (Mese Corrente)</span>
+                <strong id="kpi-paghe-mese">€ 0,00</strong>
+            </div>
+            <div class="kpi-box">
+                <span>Previsione Utile Finale Cantieri</span>
+                <strong id="kpi-utile">€ 0,00</strong>
+            </div>
+            <div class="kpi-box" style="border-left-color: var(--danger);">
+                <span>Urgenze Documenti</span>
+                <strong id="kpi-scadenze">0</strong>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔮 Previsione Fine Cantiere: Guadagnerà o Perderà?</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cantiere</th>
+                            <th>Preventivo</th>
+                            <th>Tempo Richiesto / Fatto</th>
+                            <th>Costo Finale Stimato</th>
+                            <th>Previsione a Fine Lavoro</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dash-cantieri-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🚨 Urgenze Documenti (Scaduti o entro 30 giorni)</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Operaio</th>
+                            <th>Documento</th>
+                            <th>Data Scadenza</th>
+                            <th>Stato</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dash-scadenze-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: ASSEGNA SQUADRA AI CANTIERI -->
+    <div id="ore" class="section">
+        <div class="card">
+            <h2>👷‍♂️ Assegna Presenze Squadra al Cantiere</h2>
+            <form onsubmit="salvaPresenzeSquadra(event)">
+                <div class="grid-2" style="gap:10px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label>Data Lavoro</label>
+                        <input type="date" id="squadra-data" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Seleziona Cantiere di Destinazione</label>
+                        <select id="squadra-cantiere" required onchange="renderizzaListaSquadra()"></select>
+                    </div>
+                </div>
+                <span class="help-text" style="margin-bottom: 15px;">1. Scegli il cantiere. 2. Clicca su <strong>❌ Non qui</strong> per attivare l'operaio in questo cantiere (diventa verde <strong>✓ Nel Cantiere</strong>). 3. Inserisci le giornate e le ore extra.</span>
+                <div id="squadra-lista-operai"></div>
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">✓ Salva Assegnazioni della Giornata</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>📋 Storico Giornate e Ore Extra Registrate</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Operaio</th>
+                            <th>Cantiere</th>
+                            <th>Giornate + Extra</th>
+                            <th>Ore Tot.</th>
+                            <th>Importo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-ore"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: CANTIERI E PREVISIONI -->
+    <div id="cantieri" class="section">
+        <div class="grid-2">
+            <div class="card">
+                <h2>🏢 Nuovo Cantiere (con Tempo Richiesto)</h2>
+                <form onsubmit="aggiungiCantiere(event)">
+                    <div class="form-group">
+                        <label>Nome Cantiere / Cliente</label>
+                        <input type="text" id="cant-nome" placeholder="Es. Ristrutturazione Appartamento Rossi" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Preventivo / Ricavo Pattuito (€)</label>
+                        <input type="number" step="0.01" id="cant-ricavo" placeholder="18000" required>
+                    </div>
+                    <div class="grid-2" style="gap:10px;">
+                        <div class="form-group">
+                            <label>Tempo Richiesto (Giorni di lavoro)</label>
+                            <input type="number" step="1" min="1" id="cant-giorni-stimati" placeholder="30" required>
+                            <span class="help-text">Calcolato su giornate standard da 8 ore.</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Materiali Iniziali (€)</label>
+                            <input type="number" step="0.01" id="cant-materiali" value="0" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">+ Crea Cantiere</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>➕ Aggiungi Spesa Materiali a Cantiere</h2>
+                <form onsubmit="aggiungiSpesaMateriale(event)">
+                    <div class="form-group">
+                        <label>Seleziona Cantiere</label>
+                        <select id="spesa-cantiere" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Importo Fattura / Materiali (€)</label>
+                        <input type="number" step="0.01" id="spesa-importo" placeholder="450.00" required>
+                        <span class="help-text">Cemento, ferro, piastrelle, noleggio ponteggi, ecc.</span>
+                    </div>
+                    <button type="submit" class="btn-primary">Aggiungi Costo Materiali</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔮 Calcolo Previsione Fine Cantiere (Tempo Richiesto vs Costi)</h2>
+            <p class="help-text" style="margin-bottom: 14px;">In base ai <strong>giorni richiesti per finire</strong> e alle giornate già lavorate, il sistema calcola quanti giorni/ore mancano e se alla fine <strong>guadagnerai o perderai</strong>.</p>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cantiere</th>
+                            <th>Preventivo</th>
+                            <th>Tempo Richiesto</th>
+                            <th>Fatto / Mancante</th>
+                            <th>Spese Ad Oggi</th>
+                            <th>Costo Finale Stimato</th>
+                            <th>Previsione Finale</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-cantieri"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: OPERAI, PAGHE MENSILI E SCADENZE -->
+    <div id="operai" class="section">
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <h2>
+                <span>💶 Paga Fine Mese: Giorni Lavorati, Ore Extra e Totale da Dare</span>
+                <div class="month-picker-wrap">
+                    <label for="filtro-mese" style="margin:0;">Mese:</label>
+                    <input type="month" id="filtro-mese" onchange="aggiornaUI()">
+                </div>
+            </h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Operaio</th>
+                            <th>Paga Giornaliera</th>
+                            <th>Giorni Lavorati</th>
+                            <th>+ Ore Extra</th>
+                            <th>Ore Totali</th>
+                            <th>Totale da Dare a Fine Mese</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-paghe-mese"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h2>👷 Aggiungi Operaio (Paga Giornaliera)</h2>
+                <form onsubmit="aggiungiOperaio(event)">
+                    <div class="form-group">
+                        <label>Nome e Cognome</label>
+                        <input type="text" id="op-nome" placeholder="Es. Marco Bianchi" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Qualifica</label>
+                        <input type="text" id="op-ruolo" placeholder="Es. Muratore / Capocantiere" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Paga Giornaliera (€ al giorno - 8 ore)</label>
+                        <input type="number" step="1" id="op-paga-giorno" placeholder="120" required>
+                        <span class="help-text">Le eventuali ore in più vengono calcolate automaticamente.</span>
+                    </div>
+                    <button type="submit" class="btn-primary">+ Salva Operaio</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>📄 Aggiungi Scadenza Documento</h2>
+                <form onsubmit="aggiungiDocumento(event)">
+                    <div class="form-group">
+                        <label>Operaio</label>
+                        <select id="doc-operaio" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo Documento</label>
+                        <select id="doc-tipo">
+                            <option value="Visita Medica / Idoneità">Visita Medica / Idoneità</option>
+                            <option value="Corso Sicurezza (Art. 37)">Corso Sicurezza (Art. 37)</option>
+                            <option value="Patentino Gru / Mezzi / Ponteggi">Patentino Gru / Mezzi / Ponteggi</option>
+                            <option value="Corso Primo Soccorso / Antincendio">Corso Primo Soccorso / Antincendio</option>
+                            <option value="UNILAV / Contratto a Termine">UNILAV / Contratto a Termine</option>
+                            <option value="Documento Identità / Permesso">Documento Identità / Permesso</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data di Scadenza</label>
+                        <input type="date" id="doc-scadenza" required>
+                        <span class="help-text">Avviso automatico 30 giorni prima della scadenza.</span>
+                    </div>
+                    <button type="submit" class="btn-primary">+ Registra Scadenza</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>👷 Elenco Operai</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Qualifica</th>
+                            <th>Paga Giornaliera</th>
+                            <th>Valore 1 Ora Extra</th>
+                            <th>Giorni Storici</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-operai"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🗂️ Registro Scadenze Documenti</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Operaio</th>
+                            <th>Documento</th>
+                            <th>Scadenza</th>
+                            <th>Stato</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-documenti"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast">Operazione completata!</div>
+
+<script>
+    // =====================================================================
+    // CONFIGURAZIONE SUPABASE
+    // Incolla qui i valori da Supabase > Project Settings > API (vedi LEGGIMI.md).
+    // La chiave "anon / publishable" è pubblica per natura: i dati sono protetti
+    // dalle regole di sicurezza del database (supabase/schema.sql).
+    // =====================================================================
+    const SUPABASE_URL = 'https://yobaioagodvdrgmyvavt.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_U-ET1hnDGFBGgQaYi-A8bg_kGiPWK-w';
+
+    const ORE_PER_GIORNO = 8;
+
+    const sb = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+        ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        : null;
+
+    let currentUser = null;
+    let isDemoMode = false;
+    let db = dbVuoto();
+
+    // Stato collegamento al cloud
+    let impresaId = null;
+    let versioneCloud = 0;
+    let modoAuth = 'accedi';
+    let entrataInCorso = false;
+    let timerSalvataggio = null;
+    let salvataggioInCorso = false;
+    let salvataggioPendente = false;
+    let ultimoSalvataggioFallito = false;
+
+    function dbVuoto() {
+        return { operai: [], cantieri: [], presenze: [], documenti: [] };
+    }
+
+    function normalizzaDB(dati) {
+        const d = (dati && typeof dati === 'object') ? dati : {};
+        return {
+            operai: Array.isArray(d.operai) ? d.operai : [],
+            cantieri: Array.isArray(d.cantieri) ? d.cantieri : [],
+            presenze: Array.isArray(d.presenze) ? d.presenze : [],
+            documenti: Array.isArray(d.documenti) ? d.documenti : []
+        };
+    }
+
+    function getLocalISODate(dateObj = new Date()) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    const oggiObj = new Date();
+    const oggiISO = getLocalISODate(oggiObj);
+    const meseCorrenteISO = oggiISO.slice(0, 7);
+
+    document.getElementById('squadra-data').value = oggiISO;
+    document.getElementById('filtro-mese').value = meseCorrenteISO;
+
+    function mostraToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // =====================================================================
+    // ACCESSO / REGISTRAZIONE
+    // =====================================================================
+
+    function urlApp() {
+        return window.location.origin + window.location.pathname;
+    }
+
+    function mostraMsgAuth(testo, tipo) {
+        const el = document.getElementById('auth-msg');
+        if (!testo) {
+            el.style.display = 'none';
+            return;
+        }
+        el.textContent = testo;
+        el.className = `auth-msg auth-msg-${tipo || 'avviso'}`;
+        el.style.display = 'block';
+    }
+
+    function impostaModoAuth(modo) {
+        modoAuth = modo;
+        const campi = {
+            impresa: document.getElementById('gruppo-impresa'),
+            email: document.getElementById('gruppo-email'),
+            password: document.getElementById('gruppo-password')
+        };
+        const visibili = {
+            'accedi': ['email', 'password'],
+            'registrati': ['impresa', 'email', 'password'],
+            'recupero': ['email'],
+            'nuova-password': ['password']
+        }[modo];
+
+        Object.entries(campi).forEach(([nome, gruppo]) => {
+            const mostra = visibili.includes(nome);
+            gruppo.style.display = mostra ? 'block' : 'none';
+            gruppo.querySelector('input').required = mostra;
+        });
+
+        const testi = {
+            'accedi': ['Entra', 'Non hai un account? Registrati gratis', 'Accedi per ritrovare i tuoi dati su ogni dispositivo, oppure prova subito l\'app.'],
+            'registrati': ['Crea account', 'Hai già un account? Accedi', 'Crea il tuo account gratuito: i dati saranno salvati al sicuro nel cloud.'],
+            'recupero': ['Invia link di recupero', 'Torna all\'accesso', 'Inserisci la tua email: ti mandiamo un link per scegliere una nuova password.'],
+            'nuova-password': ['Salva nuova password', '', 'Scegli la nuova password per il tuo account.']
+        }[modo];
+
+        document.getElementById('auth-submit').textContent = testi[0];
+        document.getElementById('auth-sottotitolo').textContent = testi[2];
+        document.getElementById('label-password').textContent = modo === 'nuova-password' ? 'Nuova password' : 'Password';
+        document.getElementById('auth-password').autocomplete = modo === 'accedi' ? 'current-password' : 'new-password';
+
+        const linkModo = document.getElementById('link-cambia-modo');
+        linkModo.textContent = testi[1];
+        linkModo.style.display = testi[1] ? 'inline' : 'none';
+        linkModo.onclick = () => {
+            impostaModoAuth(modo === 'accedi' ? 'registrati' : 'accedi');
+            mostraMsgAuth('');
+            return false;
+        };
+        document.getElementById('link-password-dimenticata').style.display = modo === 'accedi' ? 'inline' : 'none';
+    }
+
+    function traduciErrore(err) {
+        const msg = (err && err.message) ? err.message : String(err);
+        if (/invalid login credentials/i.test(msg)) return 'Email o password non corretti.';
+        if (/email not confirmed/i.test(msg)) return 'Devi prima confermare l\'email: apri il link che ti abbiamo inviato.';
+        if (/already registered|already exists/i.test(msg)) return 'Esiste già un account con questa email. Prova ad accedere.';
+        if (/password should be|password is too short|weak password/i.test(msg)) return 'Password troppo debole: usa almeno 8 caratteri.';
+        if (/rate limit|too many/i.test(msg)) return 'Troppi tentativi. Riprova tra qualche minuto.';
+        if (/failed to fetch|network/i.test(msg)) return 'Connessione assente. Controlla internet e riprova.';
+        return msg;
+    }
+
+    async function inviaAuth(e) {
+        e.preventDefault();
+        if (!sb) return mostraMsgAuth('Accesso non ancora configurato: per ora puoi usare solo la demo.', 'avviso');
+
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+        const nomeImpresa = document.getElementById('auth-impresa').value.trim();
+        const btn = document.getElementById('auth-submit');
+
+        btn.disabled = true;
+        mostraMsgAuth('');
+        try {
+            if (modoAuth === 'accedi') {
+                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                await entraConUtente(data.user);
+            } else if (modoAuth === 'registrati') {
+                const { data, error } = await sb.auth.signUp({
+                    email,
+                    password,
+                    options: { data: { nome_impresa: nomeImpresa }, emailRedirectTo: urlApp() }
+                });
+                if (error) throw error;
+                if (data.session) {
+                    await entraConUtente(data.user);
+                } else {
+                    impostaModoAuth('accedi');
+                    mostraMsgAuth(`Account creato! Ti abbiamo inviato una email a ${email}: apri il link per confermarlo, poi accedi.`, 'ok');
+                }
+            } else if (modoAuth === 'recupero') {
+                const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: urlApp() });
+                if (error) throw error;
+                mostraMsgAuth('Se l\'email è registrata, riceverai a breve un link per scegliere una nuova password.', 'ok');
+            } else if (modoAuth === 'nuova-password') {
+                const { data, error } = await sb.auth.updateUser({ password });
+                if (error) throw error;
+                history.replaceState(null, '', urlApp());
+                impostaModoAuth('accedi');
+                mostraToast('🔑 Password aggiornata!');
+                await entraConUtente(data.user);
+            }
+        } catch (err) {
+            mostraMsgAuth(traduciErrore(err), 'errore');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function entraConUtente(user) {
+        if (!user || entrataInCorso || (currentUser && !isDemoMode)) return;
+        entrataInCorso = true;
+        try {
+            const { data: membro, error } = await sb
+                .from('membri')
+                .select('impresa_id, ruolo, imprese(nome)')
+                .eq('user_id', user.id)
+                .limit(1)
+                .maybeSingle();
+            if (error) throw error;
+            if (!membro) throw new Error('Nessuna impresa collegata a questo account.');
+
+            const { data: riga, error: errDati } = await sb
+                .from('dati_impresa')
+                .select('dati, versione')
+                .eq('impresa_id', membro.impresa_id)
+                .single();
+            if (errDati) throw errDati;
+
+            impresaId = membro.impresa_id;
+            versioneCloud = riga.versione;
+            db = normalizzaDB(riga.dati);
+            isDemoMode = false;
+            currentUser = {
+                id: user.id,
+                email: user.email,
+                display: (membro.imprese && membro.imprese.nome) || user.email
+            };
+
+            document.getElementById('auth-password').value = '';
+            mostraMsgAuth('');
+            configuraStatoUtenteUI();
+            aggiornaUI();
+            renderizzaListaSquadra();
+            impostaStatoSalvataggio('salvato');
+            mostraToast(`Bentornato, ${currentUser.display}!`);
+            proponiImportDatiLocali();
+        } catch (err) {
+            mostraMsgAuth('Impossibile caricare i tuoi dati: ' + traduciErrore(err), 'errore');
+            await sb.auth.signOut();
+        } finally {
+            entrataInCorso = false;
+        }
+    }
+
+    // Dati salvati con la vecchia versione (nome + PIN) su questo dispositivo:
+    // se l'account è ancora vuoto, propone di importarli nel cloud.
+    function proponiImportDatiLocali() {
+        const vuoto = !db.operai.length && !db.cantieri.length && !db.presenze.length && !db.documenti.length;
+        if (!vuoto) return;
+
+        let chiavi = [];
+        try {
+            chiavi = Object.keys(localStorage).filter(k => k.startsWith('cantierePro_user_'));
+        } catch (err) {
+            return;
+        }
+
+        for (const chiave of chiavi) {
+            let dati;
+            try {
+                dati = normalizzaDB(JSON.parse(localStorage.getItem(chiave)));
+            } catch (err) {
+                continue;
+            }
+            if (!dati.operai.length && !dati.cantieri.length && !dati.presenze.length) continue;
+
+            const nomeVecchio = chiave.replace('cantierePro_user_', '').replace(/_[^_]*$/, '');
+            const ok = confirm(
+                `Su questo dispositivo ci sono dati della vecchia versione (utente "${nomeVecchio}": ` +
+                `${dati.operai.length} operai, ${dati.cantieri.length} cantieri, ${dati.presenze.length} giornate).\n\n` +
+                `Vuoi importarli nel tuo account? Saranno salvati nel cloud.`
+            );
+            if (ok) {
+                db = dati;
+                salvaDB();
+                renderizzaListaSquadra();
+                mostraToast('✅ Dati importati nel tuo account!');
+                return;
+            }
+        }
+    }
+
+    function inizializzaAuth() {
+        const recupero = window.location.hash.includes('type=recovery');
+        impostaModoAuth(recupero ? 'nuova-password' : 'accedi');
+
+        if (!sb) {
+            mostraMsgAuth('Accesso non ancora configurato: per ora puoi usare solo la demo.', 'avviso');
+            document.getElementById('auth-submit').disabled = true;
+            return;
+        }
+
+        sb.auth.onAuthStateChange((evento, sessione) => {
+            if (evento === 'PASSWORD_RECOVERY') {
+                impostaModoAuth('nuova-password');
+                document.getElementById('auth-screen').style.display = 'flex';
+                return;
+            }
+            // Ingresso automatico se c'è già una sessione (es. riapertura dell'app,
+            // link di conferma email). Le chiamate a Supabase vanno fuori dal callback.
+            if ((evento === 'INITIAL_SESSION' || evento === 'SIGNED_IN') && sessione && modoAuth !== 'nuova-password') {
+                setTimeout(() => entraConUtente(sessione.user), 0);
+            }
+        });
+    }
+
+    // =====================================================================
+    // SALVATAGGIO SUL CLOUD
+    // =====================================================================
+
+    function impostaStatoSalvataggio(stato) {
+        const el = document.getElementById('stato-salvataggio');
+        const testi = {
+            'nascosto': '',
+            'in-corso': '⏳ Salvataggio…',
+            'salvato': '☁️ Salvato',
+            'errore': '⚠️ Non salvato, riprovo…'
+        };
+        el.textContent = testi[stato] || '';
+        el.classList.toggle('errore', stato === 'errore');
+    }
+
+    function haModificheNonSalvate() {
+        return !isDemoMode && (timerSalvataggio !== null || salvataggioInCorso || salvataggioPendente);
+    }
+
+    function programmaSalvataggio(ritardo = 600) {
+        clearTimeout(timerSalvataggio);
+        if (!ultimoSalvataggioFallito) impostaStatoSalvataggio('in-corso');
+        timerSalvataggio = setTimeout(() => {
+            timerSalvataggio = null;
+            salvaSuCloud();
+        }, ritardo);
+    }
+
+    async function salvaSuCloud() {
+        if (!sb || !impresaId || isDemoMode) return;
+        if (salvataggioInCorso) {
+            salvataggioPendente = true;
+            return;
+        }
+        salvataggioInCorso = true;
+        salvataggioPendente = false;
+        impostaStatoSalvataggio('in-corso');
+
+        const impresaDelSalvataggio = impresaId;
+        const copia = JSON.parse(JSON.stringify(db));
+        try {
+            const { data, error } = await sb
+                .from('dati_impresa')
+                .update({ dati: copia, versione: versioneCloud + 1, aggiornato_il: new Date().toISOString() })
+                .eq('impresa_id', impresaDelSalvataggio)
+                .eq('versione', versioneCloud)
+                .select('versione');
+            if (error) throw error;
+
+            if (!data || !data.length) {
+                await gestisciConflitto();
+            } else {
+                versioneCloud = data[0].versione;
+                ultimoSalvataggioFallito = false;
+                impostaStatoSalvataggio(salvataggioPendente ? 'in-corso' : 'salvato');
+            }
+        } catch (err) {
+            console.error('Salvataggio non riuscito:', err);
+            ultimoSalvataggioFallito = true;
+            salvataggioPendente = true;
+            impostaStatoSalvataggio('errore');
+        } finally {
+            salvataggioInCorso = false;
+            if (salvataggioPendente && impresaId === impresaDelSalvataggio) {
+                programmaSalvataggio(ultimoSalvataggioFallito ? 5000 : 600);
+            }
+        }
+    }
+
+    // Un altro dispositivo ha salvato nel frattempo: si carica la versione più recente.
+    async function gestisciConflitto() {
+        const { data, error } = await sb
+            .from('dati_impresa')
+            .select('dati, versione')
+            .eq('impresa_id', impresaId)
+            .single();
+        if (error) throw error;
+        if (data.versione === versioneCloud) throw new Error('Salvataggio non consentito dal server.');
+
+        clearTimeout(timerSalvataggio);
+        timerSalvataggio = null;
+        salvataggioPendente = false;
+        versioneCloud = data.versione;
+        db = normalizzaDB(data.dati);
+        aggiornaUI();
+        renderizzaListaSquadra();
+        impostaStatoSalvataggio('salvato');
+        alert('I dati sono stati modificati da un altro dispositivo.\n\nHo caricato la versione più recente: ripeti l\'ultima modifica che avevi fatto.');
+    }
+
+    // Tornando sull'app (es. dal telefono) si caricano le modifiche fatte altrove.
+    async function ricaricaSeAggiornato() {
+        if (document.visibilityState !== 'visible' || !sb || !impresaId || isDemoMode || haModificheNonSalvate()) return;
+        const { data, error } = await sb
+            .from('dati_impresa')
+            .select('dati, versione')
+            .eq('impresa_id', impresaId)
+            .single();
+        if (error || !data || data.versione <= versioneCloud || haModificheNonSalvate()) return;
+        versioneCloud = data.versione;
+        db = normalizzaDB(data.dati);
+        aggiornaUI();
+        renderizzaListaSquadra();
+        mostraToast('🔄 Dati aggiornati');
+    }
+
+    document.addEventListener('visibilitychange', ricaricaSeAggiornato);
+
+    window.addEventListener('beforeunload', (e) => {
+        if (haModificheNonSalvate()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    function avviaModalitaDemo() {
+        isDemoMode = true;
+        currentUser = { nome: 'demo', display: 'Modalità Demo', pin: '0000' };
+
+        const oggi = new Date();
+        const meseStr = getLocalISODate(oggi).slice(0, 7);
+        const g1 = `${meseStr}-01`;
+        const g2 = `${meseStr}-02`;
+
+        const scadenzaTra12Giorni = new Date(oggi);
+        scadenzaTra12Giorni.setDate(oggi.getDate() + 12);
+
+        db = {
+            operai: [
+                { id: 101, nome: "Marco Bianchi", ruolo: "Capocantiere", pagaGiornaliera: 160.00 },
+                { id: 102, nome: "Giuseppe Neri", ruolo: "Muratore Specializzato", pagaGiornaliera: 128.00 },
+                { id: 103, nome: "Luca Rossi", ruolo: "Manovale", pagaGiornaliera: 104.00 }
+            ],
+            cantieri: [
+                { id: 201, nome: "Ristrutturazione Appartamento Rossi", ricavo: 18000.00, materiali: 3200.00, giorniStimati: 45 },
+                { id: 202, nome: "Rifacimento Tetto Condominio Sole", ricavo: 9500.00, materiali: 4600.00, giorniStimati: 42 }
+            ],
+            presenze: [
+                { id: 301, data: g1, cantiereId: 201, operaioId: 101, giorni: 1, oreExtra: 2, costoTotale: 200.00, note: "Tracciamento e direzione" },
+                { id: 302, data: g1, cantiereId: 201, operaioId: 102, giorni: 1, oreExtra: 1, costoTotale: 144.00, note: "Demolizione tramezzi" },
+                { id: 303, data: g2, cantiereId: 202, operaioId: 102, giorni: 1, oreExtra: 2, costoTotale: 160.00, note: "Rimozione tegole" },
+                { id: 304, data: g2, cantiereId: 202, operaioId: 103, giorni: 1, oreExtra: 1, costoTotale: 117.00, note: "Scarico materiale" }
+            ],
+            documenti: [
+                { id: 401, operaioId: 101, tipo: "Visita Medica / Idoneità", scadenza: getLocalISODate(scadenzaTra12Giorni) }
+            ]
+        };
+
+        configuraStatoUtenteUI();
+        aggiornaUI();
+        renderizzaListaSquadra();
+        mostraToast('👀 Modalità Demo avviata!');
+    }
+
+    function svuotaDemoEIniziaDaZero() {
+        isDemoMode = false;
+        currentUser = null;
+        db = dbVuoto();
+        document.getElementById('auth-password').value = '';
+        document.getElementById('auth-screen').style.display = 'flex';
+        if (sb) {
+            impostaModoAuth('registrati');
+            mostraMsgAuth('');
+        }
+        mostraToast('Crea un account gratuito per iniziare con i tuoi dati reali.');
+    }
+
+    function configuraStatoUtenteUI() {
+        const badge = document.getElementById('header-user-badge');
+        const btnSvuotaDemo = document.getElementById('btn-svuota-demo');
+        const demoBanner = document.getElementById('demo-banner');
+
+        if (isDemoMode) {
+            badge.innerText = '👀 Modalità Demo';
+            badge.classList.add('demo-mode');
+            btnSvuotaDemo.style.display = 'inline-block';
+            demoBanner.style.display = 'flex';
+            impostaStatoSalvataggio('nascosto');
+        } else {
+            badge.innerText = `👤 ${currentUser.display}`;
+            badge.classList.remove('demo-mode');
+            btnSvuotaDemo.style.display = 'none';
+            demoBanner.style.display = 'none';
+        }
+
+        document.getElementById('auth-screen').style.display = 'none';
+    }
+
+    async function esciProfilo() {
+        const domanda = haModificheNonSalvate()
+            ? 'Alcune modifiche non sono ancora state salvate nel cloud. Uscire comunque?'
+            : 'Vuoi uscire e tornare alla schermata iniziale?';
+        if (!confirm(domanda)) return;
+
+        const eraDemo = isDemoMode;
+        clearTimeout(timerSalvataggio);
+        timerSalvataggio = null;
+        salvataggioPendente = false;
+        currentUser = null;
+        isDemoMode = false;
+        impresaId = null;
+        versioneCloud = 0;
+        db = dbVuoto();
+        impostaStatoSalvataggio('nascosto');
+
+        if (sb && !eraDemo) await sb.auth.signOut();
+
+        document.getElementById('auth-password').value = '';
+        if (sb) impostaModoAuth('accedi');
+        document.getElementById('auth-screen').style.display = 'flex';
+    }
+
+    function salvaDB() {
+        if (!currentUser) return;
+        aggiornaUI();
+        if (!isDemoMode) programmaSalvataggio();
+    }
+
+    function cambiaTab(tabId, btn) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function formatEuro(num) {
+        return '€ ' + Number(num).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatData(dataStr) {
+        if (!dataStr) return '';
+        const [y, m, d] = dataStr.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    function calcolaCostoPresenza(pagaGiornaliera, giorni, oreExtra) {
+        const pagaOraria = pagaGiornaliera / ORE_PER_GIORNO;
+        return (giorni * pagaGiornaliera) + (oreExtra * pagaOraria);
+    }
+
+    function togglePresenzaOperaio(btn) {
+        const row = btn.closest('.squadra-row');
+        const isPresente = row.classList.toggle('presente');
+        
+        if (isPresente) {
+            btn.innerHTML = '✓ Nel Cantiere';
+            const inpGg = row.querySelector('.squadra-input-gg');
+            if (inpGg && parseFloat(inpGg.value) === 0) inpGg.value = 1;
+        } else {
+            btn.innerHTML = '❌ Non qui';
+            const inpGg = row.querySelector('.squadra-input-gg');
+            const inpExtra = row.querySelector('.squadra-input-extra');
+            if (inpGg) inpGg.value = 0;
+            if (inpExtra) inpExtra.value = 0;
+        }
+    }
+
+    function renderizzaListaSquadra() {
+        const container = document.getElementById('squadra-lista-operai');
+        if (!container) return;
+
+        container.innerHTML = db.operai.length ? db.operai.map(o => `
+            <div class="squadra-row" data-opid="${o.id}">
+                <div class="squadra-info" style="flex:1;">
+                    <strong>${o.nome}</strong>
+                    <small>${o.ruolo} • ${formatEuro(o.pagaGiornaliera)}/gg</small>
+                </div>
+                <div>
+                    <button type="button" class="btn-toggle-presenza" onclick="togglePresenzaOperaio(this)">❌ Non qui</button>
+                </div>
+                <div class="squadra-inputs-wrapper">
+                    <div class="squadra-field">
+                        <span>GIORNATE</span>
+                        <input type="number" class="squadra-input-gg" step="0.5" min="0" max="1" value="0">
+                    </div>
+                    <div class="squadra-field">
+                        <span>+ ORE EXTRA</span>
+                        <input type="number" class="squadra-input-extra" step="0.5" min="0" max="16" value="0">
+                    </div>
+                </div>
+            </div>
+        `).join('') : '<p class="empty-msg">Aggiungi prima gli operai nella scheda "Operai, Paghe & Scadenze".</p>';
+    }
+
+    function salvaPresenzeSquadra(e) {
+        e.preventDefault();
+        const data = document.getElementById('squadra-data').value;
+        const cantId = Number(document.getElementById('squadra-cantiere').value);
+
+        if (!cantId) return alert('Seleziona un cantiere valido.');
+
+        const rows = document.querySelectorAll('.squadra-row.presente');
+        let registrati = 0;
+
+        rows.forEach(row => {
+            const inpGg = row.querySelector('.squadra-input-gg');
+            const inpExtra = row.querySelector('.squadra-input-extra');
+            const giorni = parseFloat(inpGg.value) || 0;
+            const oreExtra = parseFloat(inpExtra.value) || 0;
+
+            if (giorni > 0 || oreExtra > 0) {
+                const opId = Number(row.dataset.opid);
+                const operaio = db.operai.find(o => o.id === opId);
+                if (operaio) {
+                    db.presenze.unshift({
+                        id: Date.now() + opId,
+                        data: data,
+                        cantiereId: cantId,
+                        operaioId: opId,
+                        giorni: giorni,
+                        oreExtra: oreExtra,
+                        costoTotale: calcolaCostoPresenza(operaio.pagaGiornaliera, giorni, oreExtra),
+                        note: 'Assegnazione squadra'
+                    });
+                    registrati++;
+                }
+            }
+        });
+
+        if (registrati === 0) return alert('Seleziona almeno un operaio (mettendolo in verde) e inserisci le giornate.');
+        
+        salvaDB();
+        renderizzaListaSquadra();
+        mostraToast(`✓ Salvate presenze per ${registrati} operai!`);
+    }
+
+    function eliminaPresenza(id) {
+        db.presenze = db.presenze.filter(p => p.id !== id);
+        salvaDB();
+    }
+
+    function aggiungiOperaio(e) {
+        e.preventDefault();
+        db.operai.push({
+            id: Date.now(),
+            nome: document.getElementById('op-nome').value.trim(),
+            ruolo: document.getElementById('op-ruolo').value.trim(),
+            pagaGiornaliera: parseFloat(document.getElementById('op-paga-giorno').value)
+        });
+        e.target.reset();
+        salvaDB();
+        renderizzaListaSquadra();
+        mostraToast('👷 Operaio aggiunto!');
+    }
+
+    function eliminaOperaio(id) {
+        if (!confirm('Eliminare questo operaio?')) return;
+        db.operai = db.operai.filter(o => o.id !== id);
+        salvaDB();
+        renderizzaListaSquadra();
+    }
+
+    function aggiungiCantiere(e) {
+        e.preventDefault();
+        db.cantieri.push({
+            id: Date.now(),
+            nome: document.getElementById('cant-nome').value.trim(),
+            ricavo: parseFloat(document.getElementById('cant-ricavo').value),
+            giorniStimati: parseFloat(document.getElementById('cant-giorni-stimati').value) || 10,
+            materiali: parseFloat(document.getElementById('cant-materiali').value) || 0
+        });
+        e.target.reset();
+        document.getElementById('cant-materiali').value = 0;
+        salvaDB();
+        mostraToast('🏢 Cantiere creato!');
+    }
+
+    function aggiungiSpesaMateriale(e) {
+        e.preventDefault();
+        const cantId = Number(document.getElementById('spesa-cantiere').value);
+        const importo = parseFloat(document.getElementById('spesa-importo').value);
+        const cantiere = db.cantieri.find(c => c.id === cantId);
+        if (cantiere) {
+            cantiere.materiali += importo;
+            e.target.reset();
+            salvaDB();
+            mostraToast('➕ Spesa materiali aggiunta!');
+        }
+    }
+
+    function eliminaCantiere(id) {
+        if (!confirm('Eliminare questo cantiere?')) return;
+        db.cantieri = db.cantieri.filter(c => c.id !== id);
+        salvaDB();
+    }
+
+    function aggiungiDocumento(e) {
+        e.preventDefault();
+        db.documenti.push({
+            id: Date.now(),
+            operaioId: Number(document.getElementById('doc-operaio').value),
+            tipo: document.getElementById('doc-tipo').value,
+            scadenza: document.getElementById('doc-scadenza').value
+        });
+        e.target.reset();
+        salvaDB();
+        mostraToast('📄 Scadenza registrata!');
+    }
+
+    function eliminaDocumento(id) {
+        db.documenti = db.documenti.filter(d => d.id !== id);
+        salvaDB();
+    }
+
+    function statoScadenza(dataStr) {
+        const oggi = new Date();
+        oggi.setHours(0, 0, 0, 0);
+        const scad = new Date(dataStr + 'T00:00:00');
+        const diffGiorni = Math.round((scad - oggi) / (1000 * 60 * 60 * 24));
+
+        if (diffGiorni < 0) {
+            return { testo: `SCADUTO da ${Math.abs(diffGiorni)} gg`, classe: 'badge-danger badge-pulse', allerta: true, urgente: true };
+        } else if (diffGiorni <= 7) {
+            return { testo: `URGENTE: scade tra ${diffGiorni} gg`, classe: 'badge-danger badge-pulse', allerta: true, urgente: true };
+        } else if (diffGiorni <= 30) {
+            return { testo: `Scade tra ${diffGiorni} gg`, classe: 'badge-warn', allerta: true, urgente: false };
+        } else {
+            return { testo: 'Valido', classe: 'badge-ok', allerta: false, urgente: false };
+        }
+    }
+
+    function aggiornaUI() {
+        if (!currentUser) return;
+
+        const optCantieri = db.cantieri.length 
+            ? db.cantieri.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+            : '<option value="">-- Crea prima un cantiere --</option>';
+
+        ['spesa-cantiere', 'squadra-cantiere'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                const valPrecedente = el.value;
+                el.innerHTML = optCantieri;
+                if (valPrecedente && db.cantieri.some(c => String(c.id) === valPrecedente)) {
+                    el.value = valPrecedente;
+                }
+            }
+        });
+
+        const optOperai = db.operai.length
+            ? db.operai.map(o => `<option value="${o.id}">${o.nome} (${formatEuro(o.pagaGiornaliera)}/gg)</option>`).join('')
+            : '<option value="">-- Aggiungi prima un operaio --</option>';
+
+        ['doc-operaio'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = optOperai;
+        });
+
+        if (!document.getElementById('squadra-lista-operai').hasChildNodes() || document.getElementById('squadra-lista-operai').innerText.includes('Aggiungi prima')) {
+            renderizzaListaSquadra();
+        }
+
+        const meseSelezionato = document.getElementById('filtro-mese').value || meseCorrenteISO;
+        let totalePagheMeseCorrente = 0;
+
+        document.getElementById('lista-paghe-mese').innerHTML = db.operai.length ? db.operai.map(o => {
+            const presMese = db.presenze.filter(x => x.operaioId === o.id && x.data && x.data.startsWith(meseSelezionato));
+            const totGiorni = presMese.reduce((acc, x) => acc + x.giorni, 0);
+            const totExtra = presMese.reduce((acc, x) => acc + x.oreExtra, 0);
+            const oreTotali = (totGiorni * ORE_PER_GIORNO) + totExtra;
+            const soldiDaDare = presMese.reduce((acc, x) => acc + x.costoTotale, 0);
+
+            return `<tr>
+                <td><strong>${o.nome}</strong><br><small style="color:#64748b">${o.ruolo}</small></td>
+                <td>${formatEuro(o.pagaGiornaliera)}/gg</td>
+                <td><strong>${totGiorni} gg</strong></td>
+                <td>${totExtra > 0 ? `<span class="badge badge-warn">+${totExtra} h</span>` : '0 h'}</td>
+                <td>${oreTotali} h</td>
+                <td><span class="badge badge-ok" style="font-size:0.92rem;">${formatEuro(soldiDaDare)}</span></td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="6" class="empty-msg">Nessun operaio inserito.</td></tr>';
+
+        db.presenze.filter(x => x.data && x.data.startsWith(meseCorrenteISO)).forEach(x => {
+            totalePagheMeseCorrente += x.costoTotale;
+        });
+
+        document.getElementById('lista-operai').innerHTML = db.operai.length ? db.operai.map(o => {
+            const ggStorici = db.presenze.filter(x => x.operaioId === o.id).reduce((acc, x) => acc + x.giorni, 0);
+            const valOra = o.pagaGiornaliera / ORE_PER_GIORNO;
+            return `<tr>
+                <td><strong>${o.nome}</strong></td>
+                <td>${o.ruolo}</td>
+                <td><strong>${formatEuro(o.pagaGiornaliera)}/gg</strong></td>
+                <td>${formatEuro(valOra)}/h</td>
+                <td>${ggStorici} gg</td>
+                <td><button class="btn-danger" onclick="eliminaOperaio(${o.id})">Elimina</button></td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="6" class="empty-msg">Nessun operaio inserito.</td></tr>';
+
+        let countAllerte = 0;
+        let htmlAllerte = '';
+        const docsOrdinati = [...db.documenti].sort((a, b) => new Date(a.scadenza) - new Date(b.scadenza));
+
+        document.getElementById('lista-documenti').innerHTML = docsOrdinati.length ? docsOrdinati.map(d => {
+            const op = db.operai.find(o => o.id === d.operaioId);
+            const nomeOp = op ? op.nome : 'Operaio rimosso';
+            const stato = statoScadenza(d.scadenza);
+            const rowClass = stato.urgente ? 'row-urgent' : '';
+
+            if (stato.allerta) {
+                countAllerte++;
+                htmlAllerte += `<tr class="${rowClass}">
+                    <td><strong>${nomeOp}</strong></td>
+                    <td>${d.tipo}</td>
+                    <td>${formatData(d.scadenza)}</td>
+                    <td><span class="badge ${stato.classe}">${stato.testo}</span></td>
+                </tr>`;
+            }
+            return `<tr class="${rowClass}">
+                <td><strong>${nomeOp}</strong></td>
+                <td>${d.tipo}</td>
+                <td>${formatData(d.scadenza)}</td>
+                <td><span class="badge ${stato.classe}">${stato.testo}</span></td>
+                <td><button class="btn-danger" onclick="eliminaDocumento(${d.id})">Elimina</button></td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="5" class="empty-msg">Nessun documento registrato.</td></tr>';
+
+        document.getElementById('dash-scadenze-list').innerHTML = htmlAllerte || '<tr><td colspan="4" class="empty-msg">✅ Tutti i documenti sono in regola!</td></tr>';
+
+        let previsioneUtileComplessivo = 0;
+        let htmlDashCantieri = '';
+
+        const mediaPagaAziendale = db.operai.length 
+            ? db.operai.reduce((acc, o) => acc + o.pagaGiornaliera, 0) / db.operai.length 
+            : 130;
+
+        document.getElementById('lista-cantieri').innerHTML = db.cantieri.length ? db.cantieri.map(c => {
+            const presCant = db.presenze.filter(x => x.cantiereId === c.id);
+            const costoManodoperaAdOggi = presCant.reduce((acc, x) => acc + x.costoTotale, 0);
+            const oreFatte = presCant.reduce((acc, x) => acc + (x.giorni * ORE_PER_GIORNO) + x.oreExtra, 0);
+            const giorniFattiEquiv = oreFatte / ORE_PER_GIORNO;
+
+            const giorniRichiesti = c.giorniStimati || 20;
+            const oreRichieste = giorniRichiesti * ORE_PER_GIORNO;
+
+            const giorniMancanti = Math.max(0, giorniRichiesti - giorniFattiEquiv);
+            const oreMancanti = Math.max(0, oreRichieste - oreFatte);
+
+            const costoOrarioMedio = oreFatte > 0 ? (costoManodoperaAdOggi / oreFatte) : (mediaPagaAziendale / ORE_PER_GIORNO);
+            const costoManodoperaMancante = oreMancanti * costoOrarioMedio;
+
+            const speseAdOggi = costoManodoperaAdOggi + c.materiali;
+            const costoFinaleStimato = speseAdOggi + costoManodoperaMancante;
+            const margineFinalePrevisto = c.ricavo - costoFinaleStimato;
+            previsioneUtileComplessivo += margineFinalePrevisto;
+
+            const willLose = margineFinalePrevisto < 0;
+            const rowClass = willLose ? 'row-loss' : '';
+
+            const badgePrevisione = willLose
+                ? `<span class="badge badge-danger">📉 PERDERÀ ${formatEuro(Math.abs(margineFinalePrevisto))}</span>`
+                : `<span class="badge badge-ok">📈 GUADAGNERÀ +${formatEuro(margineFinalePrevisto)}</span>`;
+
+            htmlDashCantieri += `<tr class="${rowClass}">
+                <td><strong>${c.nome}</strong></td>
+                <td>${formatEuro(c.ricavo)}</td>
+                <td><strong>${giorniRichiesti} gg</strong> (${oreRichieste}h)<br><small style="color:#64748b">Mancano: ${giorniMancanti.toFixed(1)} gg (${Math.round(oreMancanti)}h)</small></td>
+                <td>${formatEuro(costoFinaleStimato)}</td>
+                <td>${badgePrevisione}</td>
+            </tr>`;
+
+            return `<tr class="${rowClass}">
+                <td><strong>${c.nome}</strong></td>
+                <td>${formatEuro(c.ricavo)}</td>
+                <td><strong>${giorniRichiesti} gg</strong><br><small style="color:#64748b">${oreRichieste} ore tot.</small></td>
+                <td>Fatti: <strong>${giorniFattiEquiv.toFixed(1)} gg</strong> (${oreFatte}h)<br><small style="color:#ea580c">Mancano: ${giorniMancanti.toFixed(1)} gg (${Math.round(oreMancanti)}h)</small></td>
+                <td>${formatEuro(speseAdOggi)}<br><small style="color:#64748b">Op: ${formatEuro(costoManodoperaAdOggi)} | Mat: ${formatEuro(c.materiali)}</small></td>
+                <td><strong>${formatEuro(costoFinaleStimato)}</strong><br><small style="color:#64748b">+${formatEuro(costoManodoperaMancante)} stimati</small></td>
+                <td>${badgePrevisione}</td>
+                <td><button class="btn-danger" onclick="eliminaCantiere(${c.id})">Elimina</button></td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="8" class="empty-msg">Nessun cantiere creato.</td></tr>';
+
+        document.getElementById('dash-cantieri-list').innerHTML = htmlDashCantieri || '<tr><td colspan="5" class="empty-msg">Nessun cantiere attivo.</td></tr>';
+
+        document.getElementById('lista-ore').innerHTML = db.presenze.length ? db.presenze.map(r => {
+            const op = db.operai.find(o => o.id === r.operaioId);
+            const cant = db.cantieri.find(c => c.id === r.cantiereId);
+            const oreTot = (r.giorni * ORE_PER_GIORNO) + r.oreExtra;
+            return `<tr>
+                <td>${formatData(r.data)}</td>
+                <td>${op ? op.nome : '-'}</td>
+                <td>${cant ? cant.nome : '-'}${r.note ? `<br><small style="color:#64748b">${r.note}</small>` : ''}</td>
+                <td><strong>${r.giorni} gg</strong> ${r.oreExtra > 0 ? `<span class="badge badge-warn">+${r.oreExtra}h extra</span>` : ''}</td>
+                <td>${oreTot} h</td>
+                <td>${formatEuro(r.costoTotale)}</td>
+                <td><button class="btn-danger" onclick="eliminaPresenza(${r.id})">X</button></td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="7" class="empty-msg">Nessuna giornata registrata.</td></tr>';
+
+        document.getElementById('kpi-cantieri').innerText = db.cantieri.length;
+        document.getElementById('kpi-paghe-mese').innerText = formatEuro(totalePagheMeseCorrente);
+        const kpiUtileEl = document.getElementById('kpi-utile');
+        kpiUtileEl.innerText = formatEuro(previsioneUtileComplessivo);
+        kpiUtileEl.className = previsioneUtileComplessivo >= 0 ? 'text-success' : 'text-danger';
+        document.getElementById('kpi-scadenze').innerText = countAllerte;
+    }
+
+    function esportaDati() {
+        const nomeFile = (currentUser && currentUser.display ? currentUser.display : 'archivio')
+            .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'archivio';
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `backup_cantiere_${nomeFile}_${getLocalISODate()}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function importaDati(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (imported.operai && imported.cantieri && imported.presenze && imported.documenti) {
+                    if (!confirm('Il backup sostituirà tutti i dati attuali. Continuare?')) {
+                        event.target.value = '';
+                        return;
+                    }
+                    db = normalizzaDB(imported);
+                    salvaDB();
+                    renderizzaListaSquadra();
+                    mostraToast('✅ Backup ripristinato!');
+                } else {
+                    alert('File di backup non valido.');
+                }
+            } catch (err) {
+                alert('Errore nella lettura del file.');
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    inizializzaAuth();
+</script>
+
+</body>
+</html>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CantierePro - Gestione Giornate, Cantieri e Scadenze</title>
